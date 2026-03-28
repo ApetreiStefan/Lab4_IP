@@ -5,7 +5,7 @@
 Acest serviciu reprezintă modulul de AI al aplicației e-learning.
 
 ## 🧱 Structura proiectului
-
+'''
 ai-service/
 │
 ├── api/                    # API layer (FastAPI routers)
@@ -34,7 +34,7 @@ ai-service/
 │
 ├── main.py                # entrypoint FastAPI
 └── .env
-
+'''
 ## 🔌 api/
 
 -   ai_gateway.py → endpoint-uri principale
