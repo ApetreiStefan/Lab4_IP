@@ -1,8 +1,15 @@
+import os
 import json
 import re
+import importlib
+from typing import Any
 from google import genai
 
-def grade_and_explain_mcq_test(lesson_text: str, test_json: str, user_answers: list) -> str:
+def grade_and_explain_mcq_test(
+    lesson_text: str,
+    test_json: str | list[dict[str, Any]],
+    user_answers: list,
+) -> str:
     """
     Takes the lesson text, the generated 10-question MCQ test, and the user's answers.
     Calls Gemma-3-27B to evaluate the answers and generate a JSON array of explanations.
@@ -12,13 +19,33 @@ def grade_and_explain_mcq_test(lesson_text: str, test_json: str, user_answers: l
     :param user_answers: A list of lists containing the user's selected strings. 
                          (e.g., [["Oxygen"], ["Plants", "Algae"], ...])
     """
-    client = genai.Client()
+    try:
+        dotenv_module = importlib.import_module("dotenv")
+        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
+        if callable(load_dotenv):
+            load_dotenv()
+    except Exception:
+        pass
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return json.dumps(
+            {
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+            }
+        )
 
     # 1. Parse the original test JSON
-    try:
-        test_data = json.loads(test_json)
-    except json.JSONDecodeError:
-        return json.dumps({"error": "Invalid test_json provided. Must be a valid JSON string."})
+    if isinstance(test_json, list):
+        test_data = test_json
+    else:
+        try:
+            test_data = json.loads(test_json)
+        except json.JSONDecodeError:
+            return json.dumps({"error": "Invalid test_json provided. Must be a valid JSON string."})
+
+    if not isinstance(test_data, list):
+        return json.dumps({"error": "Invalid test_json provided. Must be a JSON array of questions."})
 
     if len(test_data) != len(user_answers):
         return json.dumps({"error": f"Mismatch: Expected 10 answers, but received {len(user_answers)}."})
@@ -59,6 +86,7 @@ Evaluation Context:
 
     # 4. Call the API
     try:
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model='gemma-3-27b-it', 
             contents=prompt,

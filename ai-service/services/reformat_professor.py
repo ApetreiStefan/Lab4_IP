@@ -1,5 +1,7 @@
+import os
 import json
 import re
+import importlib
 from google import genai
 
 
@@ -10,8 +12,21 @@ def refine_academic_text(topic_name: str, ambiguous_text: str) -> str:
     resolve ambiguity, and elevate the academic tone of a text,
     while explaining the specific grammar rules violated.
     """
-    # parametrul la aceasta functie va fi cheia
-    client = genai.Client()
+    try:
+        dotenv_module = importlib.import_module("dotenv")
+        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
+        if callable(load_dotenv):
+            load_dotenv()
+    except Exception:
+        pass
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return json.dumps(
+            {
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+            }
+        )
 
     prompt = f"""You are an expert University Professor specializing in "{topic_name}".
 You are reviewing a text that is ambiguous, poorly phrased, and contains grammatical errors.
@@ -38,6 +53,7 @@ CRITICAL REQUIREMENTS:
 """
 
     try:
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model='gemma-3-27b-it',
             contents=prompt,

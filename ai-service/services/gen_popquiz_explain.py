@@ -1,8 +1,15 @@
+import os
 import json
 import re
+import importlib
+from typing import Any
 from google import genai
 
-def generate_answer_explanations(lesson_text: str, quiz_json: str, user_answers: list) -> str:
+def generate_answer_explanations(
+    lesson_text: str,
+    quiz_json: str | list[dict[str, Any]],
+    user_answers: list,
+) -> str:
     """
     Takes the lesson text, the generated quiz, and the user's submitted answers.
     Calls Gemma-3-27B to generate a JSON array of explanations.
@@ -12,13 +19,33 @@ def generate_answer_explanations(lesson_text: str, quiz_json: str, user_answers:
     :param user_answers: A list of lists containing the user's chosen strings. 
                          (e.g., [["Oxygen"], ["Sunlight", "Water"], ...])
     """
-    client = genai.Client()
+    try:
+        dotenv_module = importlib.import_module("dotenv")
+        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
+        if callable(load_dotenv):
+            load_dotenv()
+    except Exception:
+        pass
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return json.dumps(
+            {
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+            }
+        )
 
     # 1. Parse the original quiz to build a clean context for the AI
-    try:
-        quiz_data = json.loads(quiz_json)
-    except json.JSONDecodeError:
-        return json.dumps({"error": "Invalid quiz_json provided. Must be a valid JSON string."})
+    if isinstance(quiz_json, list):
+        quiz_data = quiz_json
+    else:
+        try:
+            quiz_data = json.loads(quiz_json)
+        except json.JSONDecodeError:
+            return json.dumps({"error": "Invalid quiz_json provided. Must be a valid JSON string."})
+
+    if not isinstance(quiz_data, list):
+        return json.dumps({"error": "Invalid quiz_json provided. Must be a JSON array of questions."})
 
     if len(quiz_data) != len(user_answers):
         return json.dumps({"error": "Mismatch: The number of user answers does not match the number of questions."})
@@ -59,6 +86,7 @@ Evaluation Context:
 
     # 4. Call the API
     try:
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model='gemma-3-27b-it', 
             contents=prompt,

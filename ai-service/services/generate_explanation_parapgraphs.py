@@ -1,5 +1,7 @@
+import os
 import json
 import re
+import importlib
 from google import genai
 
 
@@ -9,8 +11,21 @@ def generate_paragraph_explanation(topic_name: str, confusing_paragraph: str,
     Calls the AI model to generate a simple, JSON-formatted explanation
     for a specific paragraph a student struggled to understand.
     """
-    # parametrul la aceasta functie este cheia
-    client = genai.Client()
+    try:
+        dotenv_module = importlib.import_module("dotenv")
+        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
+        if callable(load_dotenv):
+            load_dotenv()
+    except Exception:
+        pass
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return json.dumps(
+            {
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+            }
+        )
 
     prompt = f"""You are an empathetic, concise, and highly effective AI Tutor. 
 The student is learning about "{topic_name}" at a {education_level} level.
@@ -32,6 +47,7 @@ CRITICAL REQUIREMENTS:
 """
 
     try:
+        client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model='gemma-3-27b-it',
             contents=prompt,

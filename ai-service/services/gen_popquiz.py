@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import importlib
 from google import genai
 
 def generate_pop_quiz(lesson_type: str, lesson_text: str) -> str:
@@ -8,8 +9,21 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str) -> str:
     Calls Google AI Studio's Gemma-3-27B to generate a 5-question pop quiz.
     Returns a valid JSON string containing the quiz.
     """
-    # Initialize the client. It automatically picks up the GEMINI_API_KEY env variable.
-    client = genai.Client()
+    try:
+        dotenv_module = importlib.import_module("dotenv")
+        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
+        if callable(load_dotenv):
+            load_dotenv()
+    except Exception:
+        pass
+
+    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        return json.dumps(
+            {
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+            }
+        )
 
     prompt = f"""You are an expert educational assistant. Create a pop quiz based on the provided {lesson_type} lesson.
 
@@ -29,6 +43,7 @@ Lesson Text:
 """
 
     try:
+        client = genai.Client(api_key=api_key)
         # Using the standard instruction-tuned model name for Gemma-3-27B on AI Studio
         response = client.models.generate_content(
             model='gemma-3-27b-it', 

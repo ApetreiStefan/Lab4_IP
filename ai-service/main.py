@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from api.ai_gateway import router as ai_router
+from api.ai_gateway import router as ai_gateway_router
 
 app = FastAPI()
 
@@ -7,4 +7,4 @@ app = FastAPI()
 def root():
     return {"message": "AI Service Running"}
 
-app.include_router(ai_router)
+app.include_router(ai_gateway_router)

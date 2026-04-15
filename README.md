@@ -68,6 +68,33 @@ ai-service/
 
 Entry point FastAPI
 
+## ▶️ Cum rulezi serviciul (FastAPI)
+
+Din root-ul repo-ului:
+
+1) Intră în folderul serviciului
+
+```bash
+cd ai-service
+```
+
+2) Instalează dependențele
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+3) Pornește serverul
+
+```bash
+python -m uvicorn main:app --reload
+```
+
+4) Testează în browser
+
+- http://127.0.0.1:8000/
+- http://127.0.0.1:8000/docs
+
 ## 🔑 .env
 
 API keys (nu se urcă pe GitHub)
