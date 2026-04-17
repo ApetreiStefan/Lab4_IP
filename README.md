@@ -96,7 +96,7 @@ python -m uvicorn main:app --reload
 - http://127.0.0.1:8000/docs
 
 ## DATABASE (ai_database)
-
+```
 1) ai_cache : contine explicatiile pentru paragrafele alese de cei mai multi elevi
    -content_hash
    -cached_response
@@ -126,7 +126,7 @@ python -m uvicorn main:app --reload
    -preferred_difficulty
    -total_quizzes_taken
    -updated_at
-
+```
 ## Ultimele modificari
 
 - db/schema.sql este scriptul de creare a bazei de date
