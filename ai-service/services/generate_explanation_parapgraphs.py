@@ -2,15 +2,34 @@ import os
 import json
 import re
 import importlib
+import hashlib
+
 from google import genai
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.dialects.postgresql import insert
+
+from core.prompt_engine import prompt_explanation_paragraphs
+from db.database import AICache, get_db
+from db.repositories import AIRepository
 
 
-def generate_paragraph_explanation(topic_name: str, confusing_paragraph: str,
-                                   education_level: str = "Middle School") -> str:
+async def generate_paragraph_explanation(
+    db: AsyncSession,
+    topic_name: str,
+    confusing_paragraph: str,
+    education_level: str = "Middle School"
+) -> dict:
     """
-    Calls the AI model to generate a simple, JSON-formatted explanation
-    for a specific paragraph a student struggled to understand.
+    Flow:
+    1. Verifică cache (repo)
+    2. Dacă există → return
+    3. Dacă nu → AI → save cache → return
     """
+
+    repo = AIRepository(db)
+
+    # --- Load .env ---
     try:
         dotenv_module = importlib.import_module("dotenv")
         load_dotenv = getattr(dotenv_module, "load_dotenv", None)
@@ -19,35 +38,31 @@ def generate_paragraph_explanation(topic_name: str, confusing_paragraph: str,
     except Exception:
         pass
 
+    # --- API KEY ---
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
-        return json.dumps(
-            {
-                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
-            }
-        )
+        return {"error": "No API key provided."}
 
-    prompt = f"""You are an empathetic, concise, and highly effective AI Tutor. 
-The student is learning about "{topic_name}" at a {education_level} level.
-They are struggling to understand the following paragraph from their course material:
+    # =========================
+    # 1. CHECK CACHE (repo)
+    # =========================
+    cached = await repo.get_cached_response(confusing_paragraph)
 
-"{confusing_paragraph}"
+    if cached:
+        return cached  # deja dict
 
-CRITICAL REQUIREMENTS:
-1. Break down the confusing paragraph into simple, easy-to-understand terms appropriate for their education level.
-2. Provide a relatable, everyday analogy to make the concept "click".
-3. Ask one simple, engaging "Socratic" question at the end to check their understanding. Do NOT give them the answer to this closing question.
-4. Output ONLY valid JSON. No conversational text and no markdown formatting blocks (e.g., no ```json).
-5. The JSON must exactly match this structure:
-{{
-  "simplified_explanation": "string",
-  "analogy": "string",
-  "check_for_understanding_question": "string"
-}}
-"""
+    # =========================
+    # 2. Prompt
+    # =========================
+    prompt = prompt_explanation_paragraphs(
+        topic_name,
+        confusing_paragraph,
+        education_level
+    )
 
     try:
         client = genai.Client(api_key=api_key)
+
         response = client.models.generate_content(
             model='gemma-3-27b-it',
             contents=prompt,
@@ -57,22 +72,20 @@ CRITICAL REQUIREMENTS:
 
         match = re.search(r'(\{.*\}|\[.*\])', raw_text, re.DOTALL)
 
-        if match:
-            json_string = match.group(0)
-            json.loads(json_string)  # Validate syntax before returning
-            return json_string
-        else:
-            return json.dumps({"error": "Failed to extract valid JSON from the AI response."})
+        if not match:
+            return {"error": "Failed to extract valid JSON."}
+
+        json_string = match.group(0)
+        parsed_json = json.loads(json_string)
+
+        # =========================
+        # 3. SAVE CACHE (repo)
+        # =========================
+        await repo.save_to_cache(confusing_paragraph, parsed_json)
+
+        return parsed_json
 
     except json.JSONDecodeError:
-        return json.dumps({"error": "The AI generated invalid JSON that could not be parsed."})
+        return {"error": "Invalid JSON from AI."}
     except Exception as e:
-        return json.dumps({"error": f"API or execution error: {str(e)}"})
-
-
-# --- Example Usage ---
-if __name__ == "__main__":
-    sample_topic = "Object-Oriented Programming"
-    sample_confusing_text = "One of the core pillars of OOP is Encapsulation—the bundling of data and the methods that act on that data, while restricting direct access to some of the object's components. C++ enforces encapsulation using Access Specifiers."
-
-    print(generate_paragraph_explanation(sample_topic, sample_confusing_text, "High School"))
+        return {"error": f"API error: {str(e)}"}

@@ -4,6 +4,7 @@ import re
 import importlib
 from typing import Any
 from google import genai
+from core.prompt_engine import prompt_popquiz_explain
 
 def generate_answer_explanations(
     lesson_text: str,
@@ -65,24 +66,7 @@ def generate_answer_explanations(
         evaluation_context += f"User's Answer(s): {user_ans}\n\n"
 
     # 3. Construct the strict prompt
-    prompt = f"""You are an expert, empathetic educational tutor grading a pop quiz. 
-Review the original lesson text and the evaluation context showing the user's answers versus the correct answers.
-
-CRITICAL REQUIREMENTS:
-1. Output ONLY valid JSON. No conversational text, no explanations, and no markdown formatting blocks.
-2. The JSON must be an array of exactly {len(quiz_data)} objects, maintaining the order of the questions.
-3. Each object must have four fields:
-   - "question" (string): The text of the question.
-   - "is_fully_correct" (boolean): true ONLY if the user's answers perfectly match all correct answers, otherwise false.
-   - "explanation" (string): A highly educational and encouraging explanation. If the user is correct, reinforce why. If incorrect or partially correct, gently address the specific misconception based on their choices, and guide them to the correct answer using facts from the lesson. Do not just state the correct answer; explain the reasoning.
-   - "key_takeaway" (string): A short, memorable one-sentence summary of the core concept the student should remember for this specific question.
-
-Lesson Text:
-{lesson_text}
-
-Evaluation Context:
-{evaluation_context}
-"""
+    prompt = prompt_popquiz_explain(lesson_text,len(quiz_data),evaluation_context)
 
     # 4. Call the API
     try:

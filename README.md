@@ -95,6 +95,47 @@ python -m uvicorn main:app --reload
 - http://127.0.0.1:8000/
 - http://127.0.0.1:8000/docs
 
+## DATABASE (ai_database)
+
+1) ai_cache : contine explicatiile pentru paragrafele alese de cei mai multi elevi
+   -content_hash
+   -cached_response
+   -created_at
+
+2) ai_records : aici se salveaza quiz-urile generate de AI
+   -id
+   -user_id
+   -record_type (popquiz, finaltest)
+   -subject_tag
+   -difficulty
+   -context_text
+   -content
+   -created_at
+
+3) student_mastery : contine informatii despre situatia elevilor la o anumita materie pentru statistici, adaptarea AI-ului pentru fiecare elev
+   -id
+   -user_id
+   -topic_name
+   -mastery_score
+   -wrong_answers_count
+   -last_practiced
+
+4) student_profiles : informatii generale despre nivelul elevilor
+   -user_id
+   -current_level
+   -preferred_difficulty
+   -total_quizzes_taken
+   -updated_at
+
+## Ultimele modificari
+
+- db/schema.sql este scriptul de creare a bazei de date
+- db/database.py si db/repositories.py au fost completate
+- Prompturile au fost puse separat in core/prompt_engine.py
+- Pentru generarea de popquiz-uri si teste finale a fost adaugat si parametrul difficulty (easy,medium,hard)
+- services/generate_explanation_paragraphs.py : a fost modificat sa caute in ai_cache daca exista deja explicatia pentru un paragraf, in caz contrar este generata de AI si dupa salvata in tabelul ai_cache
+- TO DO: introducerea functionalitatii de salvare a datelor aferente tabelelor ai_records, student_mastery, student_profiles
+
 ## 🔑 .env
 
 API keys (nu se urcă pe GitHub)

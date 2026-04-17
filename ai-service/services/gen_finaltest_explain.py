@@ -4,6 +4,7 @@ import re
 import importlib
 from typing import Any
 from google import genai
+from core.prompt_engine import prompt_finaltest_explain
 
 def grade_and_explain_mcq_test(
     lesson_text: str,
@@ -65,24 +66,7 @@ def grade_and_explain_mcq_test(
         evaluation_context += f"User's Selected Answer(s): {user_ans}\n\n"
 
     # 3. Construct the prompt
-    prompt = f"""You are an expert, empathetic educational tutor grading a 10-question multiple-choice test. 
-Review the original lesson text and the evaluation context showing the user's selections versus the correct answers.
-
-CRITICAL REQUIREMENTS:
-1. Output ONLY valid JSON. No conversational text, no explanations outside the JSON, and no markdown formatting blocks.
-2. The JSON must be an array of exactly 10 objects, maintaining the order of the questions.
-3. Each object must have four fields:
-   - "question" (string): The text of the question.
-   - "is_fully_correct" (boolean): true ONLY if the user's selected answers perfectly match all correct answers, otherwise false.
-   - "explanation" (string): A highly educational and encouraging explanation. If correct, reinforce why. If incorrect or partially correct, address the specific misconception based on what they selected, and explain the correct reasoning using facts from the lesson.
-   - "key_takeaway" (string): A short, memorable one-sentence summary of the core concept.
-
-Lesson Text:
-{lesson_text}
-
-Evaluation Context:
-{evaluation_context}
-"""
+    prompt = prompt_finaltest_explain(lesson_text, evaluation_context)
 
     # 4. Call the API
     try:
