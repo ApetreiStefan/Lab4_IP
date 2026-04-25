@@ -160,3 +160,5 @@ docker compose down --v
 ## 🔑 .env
 
 API keys (nu se urcă pe GitHub)
+
+- Pentru Docker Compose: pune `GEMINI_API_KEY` (sau `GOOGLE_API_KEY`) în `ai-service/.env`.

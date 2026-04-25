@@ -4,12 +4,13 @@ services:
       context: ./ai-service
     ports:
       - "8000:8000"
+    env_file:
+      - ./ai-service/.env
     environment:
       # App DB config (async SQLAlchemy)
       DATABASE_URL: postgresql+asyncpg://ai_user:ai_pass@postgres:5432/ai_database
 
-      # AI keys: set in your environment or a local .env (not committed)
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      # AI keys are loaded from ./ai-service/.env via env_file
 
     depends_on:
       postgres:
