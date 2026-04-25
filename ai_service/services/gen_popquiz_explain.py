@@ -4,12 +4,13 @@ import re
 import importlib
 from typing import Any
 from google import genai
-from core.prompt_engine import prompt_popquiz_explain
+from ai_service.core.prompt_engine import prompt_popquiz_explain
+
 
 def generate_answer_explanations(
-    lesson_text: str,
-    quiz_json: str | list[dict[str, Any]],
-    user_answers: list,
+        lesson_text: str,
+        quiz_json: str | list[dict[str, Any]],
+        user_answers: list,
 ) -> str:
     """
     Takes the lesson text, the generated quiz, and the user's submitted answers.
@@ -32,11 +33,10 @@ def generate_answer_explanations(
     if not api_key:
         return json.dumps(
             {
-                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai_service/.env.",
             }
         )
 
-    # 1. Parse the original quiz to build a clean context for the AI
     if isinstance(quiz_json, list):
         quiz_data = quiz_json
     else:
@@ -51,39 +51,34 @@ def generate_answer_explanations(
     if len(quiz_data) != len(user_answers):
         return json.dumps({"error": "Mismatch: The number of user answers does not match the number of questions."})
 
-    # 2. Build a formatted string of the evaluation context
     evaluation_context = ""
     for i, (quiz_item, user_ans) in enumerate(zip(quiz_data, user_answers)):
         question = quiz_item.get("question", "Unknown Question")
         options = quiz_item.get("options", [])
         num_correct = quiz_item.get("num_correct", 1)
-        
-        # We know from our previous function that correct answers are at the start
+
         correct_answers = options[:num_correct]
-        
-        evaluation_context += f"Question {i+1}: {question}\n"
+
+        evaluation_context += f"Question {i + 1}: {question}\n"
         evaluation_context += f"Actual Correct Answer(s): {correct_answers}\n"
         evaluation_context += f"User's Answer(s): {user_ans}\n\n"
 
-    # 3. Construct the strict prompt
-    prompt = prompt_popquiz_explain(lesson_text,len(quiz_data),evaluation_context)
+    prompt = prompt_popquiz_explain(lesson_text, len(quiz_data), evaluation_context)
 
-    # 4. Call the API
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it', 
+            model='gemma-3-27b-it',
             contents=prompt,
         )
-        
+
         raw_text = response.text
 
-        # 5. Trim to extract only JSON
         match = re.search(r'(\{.*\}|\[.*\])', raw_text, re.DOTALL)
 
         if match:
             json_string = match.group(0)
-            json.loads(json_string) # Validate syntax
+            json.loads(json_string)  # Validate syntax
             return json_string
         else:
             return json.dumps({"error": "Failed to extract valid JSON from the AI response."})
@@ -94,10 +89,9 @@ def generate_answer_explanations(
         return json.dumps({"error": f"API or execution error: {str(e)}"})
 
 
-# --- Example Usage ---
 if __name__ == "__main__":
     sample_lesson = "Photosynthesis is the process used by plants, algae and certain bacteria to harness energy from sunlight and turn it into chemical energy. Oxygen is a byproduct."
-    
+
     # Simulating the output from your first function
     sample_quiz_json = json.dumps([
         {
@@ -111,13 +105,11 @@ if __name__ == "__main__":
             "num_correct": 2
         }
     ])
-    
-    # Simulating what the user selected in your app UI
-    # They got Q1 right, but missed one of the answers for Q2
+
     sample_user_answers = [
-        ["Oxygen"], 
-        ["Plants"] 
+        ["Oxygen"],
+        ["Plants"]
     ]
-    
+
     result = generate_answer_explanations(sample_lesson, sample_quiz_json, sample_user_answers)
     print(result)

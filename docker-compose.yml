@@ -1,16 +1,16 @@
 services:
-  ai-service:
+  ai_service:
     build:
-      context: ./ai-service
+      context: ./ai_service
     ports:
       - "8000:8000"
     env_file:
-      - ./ai-service/.env
+      - ./ai_service/.env
     environment:
       # App DB config (async SQLAlchemy)
       DATABASE_URL: postgresql+asyncpg://ai_user:ai_pass@postgres:5432/ai_database
 
-      # AI keys are loaded from ./ai-service/.env via env_file
+      # AI keys are loaded from ./ai_service/.env via env_file
 
     depends_on:
       postgres:
@@ -26,7 +26,7 @@ services:
       - "5432:5432"
     volumes:
       - ai_pgdata:/var/lib/postgresql/data
-      - ./ai-service/db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ./ai_service/db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ai_user -d ai_database"]
       interval: 5s

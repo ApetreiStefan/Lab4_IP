@@ -1,5 +1,5 @@
-# AI Gateway router
 import json
+import inspect
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -7,13 +7,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from services.gen_popquiz import generate_pop_quiz
-from services.gen_popquiz_explain import generate_answer_explanations
-from services.gen_finaltest import generate_final_mcq_test
-from services.gen_finaltest_explain import grade_and_explain_mcq_test
-from services.generate_explanation_parapgraphs import generate_paragraph_explanation
-from services.reformat_professor import refine_academic_text
-from db.database import get_db, StudentMastery  # Adăugat StudentMastery
+from ai_service.services.gen_popquiz import generate_pop_quiz
+from ai_service.services.gen_popquiz_explain import generate_answer_explanations
+from ai_service.services.gen_finaltest import generate_final_mcq_test
+from ai_service.services.gen_finaltest_explain import grade_and_explain_mcq_test
+from ai_service.services.generate_explanation_parapgraphs import generate_paragraph_explanation
+from ai_service.services.reformat_professor import refine_academic_text
+from ai_service.db.database import get_db, StudentMastery  # Adăugat StudentMastery
 
 router = APIRouter()
 
@@ -26,6 +26,10 @@ class DbPopQuizRequest(BaseModel):
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the pop quiz")
 
+class PopQuizRequest(BaseModel):
+    lesson_type: str = Field(default="General", description="Topic/category of the lesson")
+    lesson_text: str = Field(..., description="Lesson content used to generate the pop quiz")
+    difficulty: str = Field(default="easy", description="Quiz difficulty: easy|medium|hard")
 
 class PopQuizExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -48,6 +52,10 @@ class DbFinalTestRequest(BaseModel):
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the final test")
 
+class FinalTestRequest(BaseModel):
+    topic_name: str = Field(..., description="The topic name for the final test")
+    lesson_text: str = Field(..., description="Lesson content used to generate the final test")
+    difficulty: str = Field(default="easy", description="Test difficulty: easy|medium|hard")
 
 class FinalTestExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -75,6 +83,26 @@ class ProfessorReformatRequest(BaseModel):
     ambiguous_text: str = Field(...,
                                 description="Text to rewrite more clearly and academically")
 
+
+@router.post("/pop-quiz")
+def get_pop_quiz(payload: PopQuizRequest):
+    quiz_json = generate_pop_quiz(lesson_type=payload.lesson_type, lesson_text=payload.lesson_text,
+                                  difficulty=payload.difficulty)
+
+    try:
+        parsed = json.loads(quiz_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+
+    if isinstance(parsed, dict) and parsed.get("error"):
+        message = str(parsed["error"])
+        status_code = 500
+        lowered = message.lower()
+        if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
+            status_code = 400
+        raise HTTPException(status_code=status_code, detail=message)
+
+    return parsed
 
 @router.post("/db-pop-quiz")
 async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
@@ -144,17 +172,38 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
         status_code = 500
         lowered = message.lower()
         if (
-            "api key" in lowered
-            or "gemini_api_key" in lowered
-            or "google_api_key" in lowered
-            or "invalid quiz_json" in lowered
-            or "mismatch" in lowered
+                "api key" in lowered
+                or "gemini_api_key" in lowered
+                or "google_api_key" in lowered
+                or "invalid quiz_json" in lowered
+                or "mismatch" in lowered
         ):
             status_code = 400
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
 
+
+
+@router.post("/final-test")
+def get_final_test(payload: FinalTestRequest):
+    test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text,
+                                        difficulty=payload.difficulty)
+
+    try:
+        parsed = json.loads(test_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+
+    if isinstance(parsed, dict) and parsed.get("error"):
+        message = str(parsed["error"])
+        status_code = 500
+        lowered = message.lower()
+        if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
+            status_code = 400
+        raise HTTPException(status_code=status_code, detail=message)
+
+    return parsed
 
 @router.post("/db-final-test")
 async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
@@ -224,11 +273,11 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
         status_code = 500
         lowered = message.lower()
         if (
-            "api key" in lowered
-            or "gemini_api_key" in lowered
-            or "google_api_key" in lowered
-            or "invalid test_json" in lowered
-            or "mismatch" in lowered
+                "api key" in lowered
+                or "gemini_api_key" in lowered
+                or "google_api_key" in lowered
+                or "invalid test_json" in lowered
+                or "mismatch" in lowered
         ):
             status_code = 400
         raise HTTPException(status_code=status_code, detail=message)
@@ -241,12 +290,14 @@ async def paragraph_explanation(
     payload: ParagraphExplanationRequest,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await generate_paragraph_explanation(
+    maybe_awaitable = generate_paragraph_explanation(
         db=db,
         topic_name=payload.topic_name,
         confusing_paragraph=payload.confusing_paragraph,
         education_level=payload.education_level,
     )
+
+    result = await maybe_awaitable if inspect.isawaitable(maybe_awaitable) else maybe_awaitable
 
     if isinstance(result, dict) and result.get("error"):
         message = result["error"]

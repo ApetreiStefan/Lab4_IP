@@ -6,7 +6,7 @@ Acest serviciu reprezintă modulul de AI al aplicației e-learning.
 
 ## 🧱 Structura proiectului
 ```
-ai-service/
+ai_service/
 │
 ├── api/                    # API layer (FastAPI routers)
 │   ├── ai_endpoints.py
@@ -72,25 +72,19 @@ Entry point FastAPI
 
 Din root-ul repo-ului:
 
-1) Intră în folderul serviciului
+1) Instalează dependențele
 
 ```bash
-cd ai-service
+python -m pip install -r ai_service/requirements.txt
 ```
 
-2) Instalează dependențele
+2) Pornește serverul
 
 ```bash
-python -m pip install -r requirements.txt
+python -m uvicorn ai_service.main:app --reload
 ```
 
-3) Pornește serverul
-
-```bash
-python -m uvicorn main:app --reload
-```
-
-4) Testează în browser
+3) Testează în browser
 
 - http://127.0.0.1:8000/
 - http://127.0.0.1:8000/docs
@@ -114,6 +108,30 @@ docker compose up --build
 
 ```bash
 docker compose down --v
+```
+
+## ✅ Cum rulezi testele (pytest)
+
+Din root-ul repo-ului (Windows / PowerShell):
+
+1) Instalează dependențele (include și dependențele de test)
+
+```powershell
+py -m pip install -r .\ai_service\requirements.txt
+```
+
+2) Rulează toate testele din folderul `tests/`
+
+```powershell
+py -m pytest tests -q
+```
+
+Opțional:
+
+- Rulează un singur fișier de test:
+
+```powershell
+py -m pytest tests\test_api_endpoints.py -q
 ```
 
 ## ▶️ Cum rulezi mock backend-ul (Spring Boot)
@@ -179,4 +197,4 @@ $env:SERVER_PORT=8090; .\mvnw spring-boot:run
 
 API keys (nu se urcă pe GitHub)
 
-- Pentru Docker Compose: pune `GEMINI_API_KEY` (sau `GOOGLE_API_KEY`) în `ai-service/.env`.
+- Pentru Docker Compose: pune `GEMINI_API_KEY` (sau `GOOGLE_API_KEY`) în `ai_service/.env`.

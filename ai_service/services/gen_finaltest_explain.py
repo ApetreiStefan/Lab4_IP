@@ -4,12 +4,13 @@ import re
 import importlib
 from typing import Any
 from google import genai
-from core.prompt_engine import prompt_finaltest_explain
+from ai_service.core.prompt_engine import prompt_finaltest_explain
+
 
 def grade_and_explain_mcq_test(
-    lesson_text: str,
-    test_json: str | list[dict[str, Any]],
-    user_answers: list,
+        lesson_text: str,
+        test_json: str | list[dict[str, Any]],
+        user_answers: list,
 ) -> str:
     """
     Takes the lesson text, the generated 10-question MCQ test, and the user's answers.
@@ -32,7 +33,7 @@ def grade_and_explain_mcq_test(
     if not api_key:
         return json.dumps(
             {
-                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai_service/.env.",
             }
         )
 
@@ -56,11 +57,11 @@ def grade_and_explain_mcq_test(
     for i, (q_item, user_ans) in enumerate(zip(test_data, user_answers)):
         question = q_item.get("question", "Unknown Question")
         num_correct = q_item.get("num_correct", 1)
-        
+
         # Extract correct answers based on the num_correct index rule
         correct_answers = q_item.get("options", [])[:num_correct]
-        
-        evaluation_context += f"--- Question {i+1} ---\n"
+
+        evaluation_context += f"--- Question {i + 1} ---\n"
         evaluation_context += f"Question: {question}\n"
         evaluation_context += f"Actual Correct Answer(s): {correct_answers}\n"
         evaluation_context += f"User's Selected Answer(s): {user_ans}\n\n"
@@ -72,10 +73,10 @@ def grade_and_explain_mcq_test(
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it', 
+            model='gemma-3-27b-it',
             contents=prompt,
         )
-        
+
         raw_text = response.text
 
         # 5. Extract JSON
@@ -83,7 +84,7 @@ def grade_and_explain_mcq_test(
 
         if match:
             json_string = match.group(0)
-            json.loads(json_string) 
+            json.loads(json_string)
             return json_string
         else:
             return json.dumps({"error": "Failed to extract valid JSON from the AI response."})

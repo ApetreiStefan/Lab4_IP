@@ -9,16 +9,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 
-from core.prompt_engine import prompt_explanation_paragraphs
-from db.database import AICache, get_db
-from db.repositories import AIRepository
+from ai_service.core.prompt_engine import (prompt_explanation_paragraphs)
+from ai_service.db.database import AICache, get_db
+from ai_service.db.repositories import AIRepository
 
 
 async def generate_paragraph_explanation(
-    db: AsyncSession,
-    topic_name: str,
-    confusing_paragraph: str,
-    education_level: str = "Middle School"
+        db: AsyncSession,
+        topic_name: str,
+        confusing_paragraph: str,
+        education_level: str = "Middle School"
 ) -> dict:
     """
     Flow:
@@ -38,22 +38,15 @@ async def generate_paragraph_explanation(
     except Exception:
         pass
 
-    # --- API KEY ---
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     if not api_key:
         return {"error": "No API key provided."}
 
-    # =========================
-    # 1. CHECK CACHE (repo)
-    # =========================
     cached = await repo.get_cached_response(confusing_paragraph)
 
     if cached:
         return cached  # deja dict
 
-    # =========================
-    # 2. Prompt
-    # =========================
     prompt = prompt_explanation_paragraphs(
         topic_name,
         confusing_paragraph,
@@ -78,9 +71,6 @@ async def generate_paragraph_explanation(
         json_string = match.group(0)
         parsed_json = json.loads(json_string)
 
-        # =========================
-        # 3. SAVE CACHE (repo)
-        # =========================
         await repo.save_to_cache(confusing_paragraph, parsed_json)
 
         return parsed_json

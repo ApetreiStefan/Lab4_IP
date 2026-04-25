@@ -3,7 +3,8 @@ import json
 import re
 import importlib
 from google import genai
-from core.prompt_engine import prompt_popquiz 
+from ai_service.core.prompt_engine import prompt_popquiz
+
 
 def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> str:
     """
@@ -22,35 +23,29 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> st
     if not api_key:
         return json.dumps(
             {
-                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai-service/.env.",
+                "error": "No API key was provided. Set GEMINI_API_KEY (or GOOGLE_API_KEY) in your environment or in ai_service/.env.",
             }
         )
 
-    prompt = prompt_popquiz(lesson_type,lesson_text,difficulty)
+    prompt = prompt_popquiz(lesson_type, lesson_text, difficulty)
 
     try:
         client = genai.Client(api_key=api_key)
-        # Using the standard instruction-tuned model name for Gemma-3-27B on AI Studio
         response = client.models.generate_content(
-            model='gemma-3-27b-it', 
+            model='gemma-3-27b-it',
             contents=prompt,
         )
-        
+
         raw_text = response.text
 
-        # Trim the response to extract only the JSON structure
-        # This regex looks for the first '[' or '{' and the last ']' or '}'
         match = re.search(r'(\{.*\}|\[.*\])', raw_text, re.DOTALL)
 
         if match:
             json_string = match.group(0)
-            
-            # Verify it is actually valid JSON before returning
-            # If it fails, it will jump to the except block
-            json.loads(json_string) 
+
+            json.loads(json_string)
             return json_string
         else:
-            # Fallback if no JSON structure is found
             return json.dumps({"error": "Failed to extract valid JSON from the AI response."})
 
     except json.JSONDecodeError:
@@ -58,9 +53,9 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> st
     except Exception as e:
         return json.dumps({"error": f"API or execution error: {str(e)}"})
 
-# --- Example Usage ---
+
 if __name__ == "__main__":
     sample_lesson_type = "Biology"
     sample_lesson_text = "Photosynthesis is the process used by plants, algae and certain bacteria to harness energy from sunlight and turn it into chemical energy. Oxygen is a byproduct."
-    
+
     print(generate_pop_quiz(sample_lesson_type, sample_lesson_text))

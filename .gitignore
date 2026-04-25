@@ -4,11 +4,13 @@ __pycache__/
 *.pyo
 *.pyd
 *.pyc
+.pytest_cache/
 
 # Virtual environment
 .env
 venv/
 .env/
+.venv
 
 # Logs
 *.log
