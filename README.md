@@ -116,6 +116,24 @@ docker compose up --build
 docker compose down --v
 ```
 
+## ▶️ Cum rulezi mock backend-ul (Spring Boot)
+
+Din root-ul repo-ului:
+
+```powershell
+cd backend-mock
+.\mvnw spring-boot:run
+```
+
+Implicit pornește pe `http://127.0.0.1:8086` (configurat în `backend-mock/src/main/resources/application.properties`).
+
+Dacă portul e ocupat, poți porni pe alt port fără să modifici fișierele:
+
+```powershell
+cd backend-mock
+$env:SERVER_PORT=8090; .\mvnw spring-boot:run
+```
+
 ## DATABASE (ai_database)
 ```
 1) ai_cache : contine explicatiile pentru paragrafele alese de cei mai multi elevi

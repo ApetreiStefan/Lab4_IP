@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.pyc
 
 # Virtual environment
 .env
@@ -16,3 +17,8 @@ venv/
 .vscode/
 .DS_Store
 .idea/
+
+# IntelliJ & Java
+.idea/
+target/
+*.iml

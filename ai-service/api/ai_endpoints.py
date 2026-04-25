@@ -5,6 +5,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from services.gen_popquiz import generate_pop_quiz
 from services.gen_popquiz_explain import generate_answer_explanations
@@ -12,22 +13,26 @@ from services.gen_finaltest import generate_final_mcq_test
 from services.gen_finaltest_explain import grade_and_explain_mcq_test
 from services.generate_explanation_parapgraphs import generate_paragraph_explanation
 from services.reformat_professor import refine_academic_text
-from db.database import get_db
+from db.database import get_db, StudentMastery  # Adăugat StudentMastery
 
 router = APIRouter()
 
 
-class PopQuizRequest(BaseModel):
-    lesson_type: str = Field(default="General", description="Topic/category of the lesson")
-    lesson_text: str = Field(..., description="Lesson content used to generate the pop quiz")
-    difficulty: str = Field(default="easy", description="Quiz difficulty")
+class DbPopQuizRequest(BaseModel):
+    user_id: str = Field(...,
+                         description="ID-ul studentului pentru preluarea mastery score-ului")
+    lesson_type: str = Field(
+        default="General", description="Topic/category of the lesson")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the pop quiz")
 
 
 class PopQuizExplanationRequest(BaseModel):
-    lesson_text: str = Field(..., description="The original text of the lesson")
+    lesson_text: str = Field(...,
+                             description="The original text of the lesson")
     quiz_json: str | list[dict[str, Any]] = Field(
         ...,
-        description="The quiz JSON returned by the pop quiz generator (array of objects). You may also pass it as a JSON-encoded string for compatibility.",
+        description="The quiz JSON returned by the pop quiz generator. You may pass it as a JSON string.",
     )
     user_answers: list[list[str]] = Field(
         ...,
@@ -35,17 +40,21 @@ class PopQuizExplanationRequest(BaseModel):
     )
 
 
-class FinalTestRequest(BaseModel):
-    topic_name: str = Field(..., description="The topic name for the final test")
-    lesson_text: str = Field(..., description="Lesson content used to generate the final test")
-    difficulty: str = Field(default="easy", description="Quiz difficulty")
+class DbFinalTestRequest(BaseModel):
+    user_id: str = Field(...,
+                         description="ID-ul studentului pentru preluarea mastery score-ului")
+    topic_name: str = Field(...,
+                            description="The topic name for the final test")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the final test")
 
 
 class FinalTestExplanationRequest(BaseModel):
-    lesson_text: str = Field(..., description="The original text of the lesson")
+    lesson_text: str = Field(...,
+                             description="The original text of the lesson")
     test_json: str | list[dict[str, Any]] = Field(
         ...,
-        description="The final test JSON returned by the generator (array of objects). You may also pass it as a JSON-encoded string for compatibility.",
+        description="The final test JSON returned by the generator. You may pass it as a JSON string.",
     )
     user_answers: list[list[str]] = Field(
         ...,
@@ -55,24 +64,50 @@ class FinalTestExplanationRequest(BaseModel):
 
 class ParagraphExplanationRequest(BaseModel):
     topic_name: str = Field(..., description="The topic name")
-    confusing_paragraph: str = Field(..., description="The paragraph the student struggled with")
-    education_level: str = Field(default="Middle School", description="Student education level")
+    confusing_paragraph: str = Field(...,
+                                     description="The paragraph the student struggled with")
+    education_level: str = Field(
+        default="Middle School", description="Student education level")
 
 
 class ProfessorReformatRequest(BaseModel):
     topic_name: str = Field(..., description="Academic domain/topic")
-    ambiguous_text: str = Field(..., description="Text to rewrite more clearly and academically")
+    ambiguous_text: str = Field(...,
+                                description="Text to rewrite more clearly and academically")
 
 
-@router.post("/pop-quiz")
-@router.post("/get-pop-quiz", include_in_schema=False, deprecated=True)
-def create_pop_quiz(payload: PopQuizRequest):
-    quiz_json = generate_pop_quiz(lesson_type=payload.lesson_type, lesson_text=payload.lesson_text, difficulty=payload.difficulty)
+@router.post("/db-pop-quiz")
+async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
+
+    # 1. Căutăm contextul studentului în Baza de Date
+    stmt = select(StudentMastery.mastery_score).where(
+        StudentMastery.user_id == payload.user_id,
+        StudentMastery.topic_name == payload.lesson_type
+    )
+    result = await db.execute(stmt)
+    # Setăm default la 0.5 dacă studentul/materia nu există
+    score = result.scalar_one_or_none() or 0.5
+
+    # 2. Calculăm dificultatea pe baza scorului de mastery
+    if score < 0.4:
+        calculated_difficulty = "easy"
+    elif score < 0.7:
+        calculated_difficulty = "medium"
+    else:
+        calculated_difficulty = "hard"
+
+    # 3. Generăm testul
+    quiz_json = generate_pop_quiz(
+        lesson_type=payload.lesson_type,
+        lesson_text=payload.lesson_text,
+        difficulty=calculated_difficulty
+    )
 
     try:
         parsed = json.loads(quiz_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -84,9 +119,8 @@ def create_pop_quiz(payload: PopQuizRequest):
     return parsed
 
 
-@router.post("/pop-quiz/explanations")
-@router.post("/get-pop-quiz-explanation", include_in_schema=False, deprecated=True)
-def create_pop_quiz_explanations(payload: PopQuizExplanationRequest):
+@router.post("/pop-quiz-explanation")
+def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     quiz_json_str = (
         json.dumps(payload.quiz_json, ensure_ascii=False)
         if isinstance(payload.quiz_json, list)
@@ -102,7 +136,8 @@ def create_pop_quiz_explanations(payload: PopQuizExplanationRequest):
     try:
         parsed = json.loads(explanations_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -121,15 +156,37 @@ def create_pop_quiz_explanations(payload: PopQuizExplanationRequest):
     return parsed
 
 
-@router.post("/final-test")
-@router.post("/get-final-test", include_in_schema=False, deprecated=True)
-def create_final_test(payload: FinalTestRequest):
-    test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text, difficulty=payload.difficulty)
+@router.post("/db-final-test")
+async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
+
+    # 1. Căutăm contextul studentului în Baza de Date
+    stmt = select(StudentMastery.mastery_score).where(
+        StudentMastery.user_id == payload.user_id,
+        StudentMastery.topic_name == payload.topic_name
+    )
+    result = await db.execute(stmt)
+    score = result.scalar_one_or_none() or 0.5
+
+    # 2. Calculăm dificultatea
+    if score < 0.4:
+        calculated_difficulty = "easy"
+    elif score < 0.7:
+        calculated_difficulty = "medium"
+    else:
+        calculated_difficulty = "hard"
+
+    # 3. Generăm testul final
+    test_json = generate_final_mcq_test(
+        topic_name=payload.topic_name,
+        lesson_text=payload.lesson_text,
+        difficulty=calculated_difficulty
+    )
 
     try:
         parsed = json.loads(test_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -142,9 +199,8 @@ def create_final_test(payload: FinalTestRequest):
     return parsed
 
 
-@router.post("/final-test/explanations")
-@router.post("/get-final-test-explanation", include_in_schema=False, deprecated=True)
-def create_final_test_explanations(payload: FinalTestExplanationRequest):
+@router.post("/final-test-explanation")
+def final_test_explanation(payload: FinalTestExplanationRequest):
     test_json_str = (
         json.dumps(payload.test_json, ensure_ascii=False)
         if isinstance(payload.test_json, list)
@@ -160,7 +216,8 @@ def create_final_test_explanations(payload: FinalTestExplanationRequest):
     try:
         parsed = json.loads(explanations_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -180,8 +237,7 @@ def create_final_test_explanations(payload: FinalTestExplanationRequest):
 
 
 @router.post("/paragraph-explanation")
-@router.post("/get-paragraph-explanation", include_in_schema=False, deprecated=True)
-async def create_paragraph_explanation(
+async def paragraph_explanation(
     payload: ParagraphExplanationRequest,
     db: AsyncSession = Depends(get_db)
 ):
@@ -204,15 +260,16 @@ async def create_paragraph_explanation(
     return result
 
 
-@router.post("/professor/reformat")
-@router.post("/reformat-professor", include_in_schema=False, deprecated=True)
+@router.post("/reformat-professor")
 def reformat_professor(payload: ProfessorReformatRequest):
-    result_json = refine_academic_text(topic_name=payload.topic_name, ambiguous_text=payload.ambiguous_text)
+    result_json = refine_academic_text(
+        topic_name=payload.topic_name, ambiguous_text=payload.ambiguous_text)
 
     try:
         parsed = json.loads(result_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
