@@ -1,0 +1,52 @@
+
+{
+
+    "quiz_type": "pop_quiz",
+
+    "topic": "Electric Circuits",
+
+    "questions": [
+
+        {
+
+            "questionText": "What is the unit of measurement for electric current?",
+
+            "options": ["Ampere", "Volt", "Watt", "Ohm"],
+
+            "correctAnswerIndex": 0
+
+        },
+
+        {
+
+            "questionText": "Which type of circuit allows a direct path for current flow between two points?",
+
+            "options": ["Series Circuit", "Parallel Circuit", "Closed Circuit", "Open Circuit"],
+
+            "correctAnswerIndex": 2
+
+        },
+
+        {
+
+            "questionText": "What is the term for the opposition to the flow of electric current in a circuit?",
+
+            "options": ["Resistance", "Inductance", "Capacitance", "Conductivity"],
+
+            "correctAnswerIndex": 0
+
+        },
+
+        {
+
+            "questionText": "Which law describes the relationship between voltage, current, and resistance in an electric circuit?",
+
+            "options": ["Ohm's Law", "Kirchhoff's Current Law", "Kirchhoff's Voltage Law", "Joule's Law"],
+
+            "correctAnswerIndex": 0
+
+        }
+
+    ]
+
+}

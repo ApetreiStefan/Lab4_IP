@@ -1,0 +1,7 @@
+{
+    "qwen2.5:3b": {
+        "durata_secunde": 0.21,
+        "cpu_max_procent": 0,
+        "ram_max_gb": 7.99
+    }
+}

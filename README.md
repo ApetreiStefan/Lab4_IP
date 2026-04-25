@@ -75,7 +75,7 @@ Din root-ul repo-ului:
 1) Intră în folderul serviciului
 
 ```bash
-cd ai-service
+cd ai_service
 ```
 
 2) Instalează dependențele
