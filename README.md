@@ -6,10 +6,10 @@ Acest serviciu reprezintă modulul de AI al aplicației e-learning.
 
 ## 🧱 Structura proiectului
 ```
-ai-service/
+ai_service/
 │
 ├── api/                    # API layer (FastAPI routers)
-│   ├── ai_gateway.py
+│   ├── ai_endpoints.py
 │   ├── results_api.py
 │   ├── context_receiver.py
 │
@@ -37,7 +37,7 @@ ai-service/
 ```
 ## 🔌 api/
 
--   ai_gateway.py → endpoint-uri principale
+-   ai_endpoints.py → endpoint-uri principale
 -   results_api.py → rezultate
 -   context_receiver.py → context elev
 
@@ -72,28 +72,61 @@ Entry point FastAPI
 
 Din root-ul repo-ului:
 
-1) Intră în folderul serviciului
+1) Instalează dependențele
 
 ```bash
-cd ai_service
+python -m pip install -r ai_service/requirements.txt
 ```
 
-2) Instalează dependențele
+2) Pornește serverul
 
 ```bash
-python -m pip install -r requirements.txt
+python -m uvicorn ai_service.main:app --reload
 ```
 
-3) Pornește serverul
-
-```bash
-python -m uvicorn main:app --reload
-```
-
-4) Testează în browser
+3) Testează în browser
 
 - http://127.0.0.1:8000/
 - http://127.0.0.1:8000/docs
+
+## 🐳 Docker Desktop (recomandat)
+
+Din root-ul repo-ului:
+
+1) Pornește serviciile (API + Postgres)
+
+```bash
+docker compose up --build
+```
+
+2) Testează
+
+- http://127.0.0.1:8000/
+- http://127.0.0.1:8000/docs
+
+3) Închide serviciile
+
+```bash
+docker compose down --v
+```
+
+## ▶️ Cum rulezi mock backend-ul (Spring Boot)
+
+Din root-ul repo-ului:
+
+```powershell
+cd backend-mock
+.\mvnw spring-boot:run
+```
+
+Implicit pornește pe `http://127.0.0.1:8086` (configurat în `backend-mock/src/main/resources/application.properties`).
+
+Dacă portul e ocupat, poți porni pe alt port fără să modifici fișierele:
+
+```powershell
+cd backend-mock
+$env:SERVER_PORT=8090; .\mvnw spring-boot:run
+```
 
 ## DATABASE (ai_database)
 ```
@@ -139,3 +172,5 @@ python -m uvicorn main:app --reload
 ## 🔑 .env
 
 API keys (nu se urcă pe GitHub)
+
+- Pentru Docker Compose: pune `GEMINI_API_KEY` (sau `GOOGLE_API_KEY`) în `ai_service/.env`.
