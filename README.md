@@ -110,6 +110,30 @@ docker compose up --build
 docker compose down --v
 ```
 
+## ✅ Cum rulezi testele (pytest)
+
+Din root-ul repo-ului (Windows / PowerShell):
+
+1) Instalează dependențele (include și dependențele de test)
+
+```powershell
+py -m pip install -r .\ai_service\requirements.txt
+```
+
+2) Rulează toate testele din folderul `tests/`
+
+```powershell
+py -m pytest tests -q
+```
+
+Opțional:
+
+- Rulează un singur fișier de test:
+
+```powershell
+py -m pytest tests\test_api_endpoints.py -q
+```
+
 ## ▶️ Cum rulezi mock backend-ul (Spring Boot)
 
 Din root-ul repo-ului:
