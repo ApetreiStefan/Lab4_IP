@@ -9,7 +9,7 @@ Acest serviciu reprezintă modulul de AI al aplicației e-learning.
 ai-service/
 │
 ├── api/                    # API layer (FastAPI routers)
-│   ├── ai_gateway.py
+│   ├── ai_endpoints.py
 │   ├── results_api.py
 │   ├── context_receiver.py
 │
@@ -37,7 +37,7 @@ ai-service/
 ```
 ## 🔌 api/
 
--   ai_gateway.py → endpoint-uri principale
+-   ai_endpoints.py → endpoint-uri principale
 -   results_api.py → rezultate
 -   context_receiver.py → context elev
 
@@ -94,6 +94,27 @@ python -m uvicorn main:app --reload
 
 - http://127.0.0.1:8000/
 - http://127.0.0.1:8000/docs
+
+## 🐳 Docker Desktop (recomandat)
+
+Din root-ul repo-ului:
+
+1) Pornește serviciile (API + Postgres)
+
+```bash
+docker compose up --build
+```
+
+2) Testează
+
+- http://127.0.0.1:8000/
+- http://127.0.0.1:8000/docs
+
+3) Închide serviciile
+
+```bash
+docker compose down --v
+```
 
 ## DATABASE (ai_database)
 ```

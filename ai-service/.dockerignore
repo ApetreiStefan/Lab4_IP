@@ -1,0 +1,22 @@
+__pycache__/
+*.py[cod]
+*.log
+
+# local env/secrets
+.env
+.env.*
+
+# venvs
+.venv/
+venv/
+
+# editor files
+.vscode/
+.idea/
+
+# git
+.git/
+.gitignore
+
+# tests/build artifacts
+.pytest_cache/

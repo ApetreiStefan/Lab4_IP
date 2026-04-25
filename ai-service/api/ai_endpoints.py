@@ -63,8 +63,10 @@ class ProfessorReformatRequest(BaseModel):
     topic_name: str = Field(..., description="Academic domain/topic")
     ambiguous_text: str = Field(..., description="Text to rewrite more clearly and academically")
 
-@router.post("/get-pop-quiz")
-def get_pop_quiz(payload: PopQuizRequest):
+
+@router.post("/pop-quiz")
+@router.post("/get-pop-quiz", include_in_schema=False, deprecated=True)
+def create_pop_quiz(payload: PopQuizRequest):
     quiz_json = generate_pop_quiz(lesson_type=payload.lesson_type, lesson_text=payload.lesson_text, difficulty=payload.difficulty)
 
     try:
@@ -82,8 +84,9 @@ def get_pop_quiz(payload: PopQuizRequest):
     return parsed
 
 
-@router.post("/get-pop-quiz-explanation")
-def get_pop_quiz_explanation(payload: PopQuizExplanationRequest):
+@router.post("/pop-quiz/explanations")
+@router.post("/get-pop-quiz-explanation", include_in_schema=False, deprecated=True)
+def create_pop_quiz_explanations(payload: PopQuizExplanationRequest):
     quiz_json_str = (
         json.dumps(payload.quiz_json, ensure_ascii=False)
         if isinstance(payload.quiz_json, list)
@@ -118,8 +121,9 @@ def get_pop_quiz_explanation(payload: PopQuizExplanationRequest):
     return parsed
 
 
-@router.post("/get-final-test")
-def get_final_test(payload: FinalTestRequest):
+@router.post("/final-test")
+@router.post("/get-final-test", include_in_schema=False, deprecated=True)
+def create_final_test(payload: FinalTestRequest):
     test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text, difficulty=payload.difficulty)
 
     try:
@@ -138,8 +142,9 @@ def get_final_test(payload: FinalTestRequest):
     return parsed
 
 
-@router.post("/get-final-test-explanation")
-def get_final_test_explanation(payload: FinalTestExplanationRequest):
+@router.post("/final-test/explanations")
+@router.post("/get-final-test-explanation", include_in_schema=False, deprecated=True)
+def create_final_test_explanations(payload: FinalTestExplanationRequest):
     test_json_str = (
         json.dumps(payload.test_json, ensure_ascii=False)
         if isinstance(payload.test_json, list)
@@ -174,8 +179,9 @@ def get_final_test_explanation(payload: FinalTestExplanationRequest):
     return parsed
 
 
-@router.post("/get-paragraph-explanation")
-async def get_paragraph_explanation(
+@router.post("/paragraph-explanation")
+@router.post("/get-paragraph-explanation", include_in_schema=False, deprecated=True)
+async def create_paragraph_explanation(
     payload: ParagraphExplanationRequest,
     db: AsyncSession = Depends(get_db)
 ):
@@ -197,7 +203,9 @@ async def get_paragraph_explanation(
 
     return result
 
-@router.post("/reformat-professor")
+
+@router.post("/professor/reformat")
+@router.post("/reformat-professor", include_in_schema=False, deprecated=True)
 def reformat_professor(payload: ProfessorReformatRequest):
     result_json = refine_academic_text(topic_name=payload.topic_name, ambiguous_text=payload.ambiguous_text)
 
