@@ -3,6 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import update, func
 import hashlib
+from uuid import UUID
 
 # Importă modelele tale
 from .database import AICache, StudentProfile, StudentMastery, AIRecord
@@ -12,7 +13,20 @@ class AIRepository:
         self.db = db
 
     # --- Salvarea quiz-urilor generate ---
-    async def save_ai_record(self, user_id, record_type, subject_tag, difficulty, context_text, content):
+
+    async def save_ai_record(
+        self,
+        user_id: UUID,
+        record_type: str,
+        subject_tag: str | None,
+        difficulty: str | None,
+        context_text: str | None,
+        content: dict
+    ):
+        # conversie defensivă (în caz că vine string din API)
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
+    
         new_record = AIRecord(
             user_id=user_id,
             record_type=record_type,
@@ -21,8 +35,12 @@ class AIRepository:
             context_text=context_text,
             content=content
         )
+    
         self.db.add(new_record)
         await self.db.commit()
+        await self.db.refresh(new_record)  # ca să ai id-ul generat
+    
+        return new_record
 
     # --- LOGICA DE CACHE ---
     async def get_cached_response(self, text_content: str):
@@ -43,41 +61,40 @@ class AIRepository:
         await self.db.execute(stmt)
         await self.db.commit()
 
-    # --- LOGICA DE PROFIL & MASTERY ---
-    async def get_student_context(self, user_id: str):
-        # 1. Obținem profilul
-        profile_stmt = select(StudentProfile).where(StudentProfile.user_id == user_id)
-        profile_res = await self.db.execute(profile_stmt)
-        profile = profile_res.scalar_one_or_none()
-
-        # 2. Obținem punctele slabe
+    # --- LOGICA DE MASTERY ---
+    async def get_student_context(self, user_id: UUID):
+        # dacă vine ca string din API, îl convertim
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
+    
         mastery_stmt = select(StudentMastery.topic_name).where(
             StudentMastery.user_id == user_id,
             StudentMastery.mastery_score < 0.5
         )
+    
         mastery_res = await self.db.execute(mastery_stmt)
-        
+    
         return {
-            "profile": profile,
             "weak_topics": mastery_res.scalars().all()
         }
 
-    async def update_student_performance(self, user_id: str, topic: str, is_correct: bool):
+    async def update_student_performance(self, user_id: UUID, topic: str, score_change : float, wrong_answers : int):
         """Updatează scorul folosind logica de Upsert (PostgreSQL specific)"""
-        score_change = 0.1 if is_correct else -0.1
-        wrong_inc = 0 if is_correct else 1
+
+        if isinstance(user_id, str):
+            user_id = UUID(user_id)
 
         # PostgreSQL ON CONFLICT (user_id, topic_name) DO UPDATE
         stmt = insert(StudentMastery).values(
             user_id=user_id,
             topic_name=topic,
             mastery_score=max(0, score_change), # Start de la 0.1 sau 0
-            wrong_answers_count=wrong_inc
+            wrong_answers_count=wrong_answers
         ).on_conflict_do_update(
             index_elements=['user_id', 'topic_name'],
             set_={
                 "mastery_score": func.greatest(0, func.least(1, StudentMastery.mastery_score + score_change)),
-                "wrong_answers_count": StudentMastery.wrong_answers_count + wrong_inc,
+                "wrong_answers_count": StudentMastery.wrong_answers_count + wrong_answers,
                 "last_practiced": func.now()
             }
         )
