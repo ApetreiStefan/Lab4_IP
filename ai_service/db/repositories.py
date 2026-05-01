@@ -6,7 +6,7 @@ import hashlib
 from uuid import UUID
 
 # Importă modelele tale
-from .database import AICache, StudentProfile, StudentMastery, AIRecord
+from .database import AICache, StudentMastery, AIRecord
 
 class AIRepository:
     def __init__(self, db: AsyncSession):
