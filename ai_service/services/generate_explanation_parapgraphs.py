@@ -44,8 +44,15 @@ async def generate_paragraph_explanation(
 
     cached = await repo.get_cached_response(confusing_paragraph)
 
-    if cached:
-        return cached  # deja dict
+    # Treat common "not found" payloads (or empty JSON) as a cache miss.
+    is_not_found_payload = False
+    if isinstance(cached, dict):
+        detail = cached.get("detail")
+        if isinstance(detail, str) and detail.strip().lower() in {"not found", "not_found"}:
+            is_not_found_payload = True
+
+    if cached not in (None, 0, {}, []) and not is_not_found_payload:
+        return cached  # deja dict/list
 
     prompt = prompt_explanation_paragraphs(
         topic_name,
