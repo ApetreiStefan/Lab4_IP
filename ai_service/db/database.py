@@ -51,28 +51,6 @@ class AIRecord(Base):
     )
 
 
-class StudentMastery(Base):
-    __tablename__ = "student_mastery"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("student_profiles.user_id", ondelete="CASCADE"),
-        index=True
-    )
-    topic_name: Mapped[str] = mapped_column(String(100))
-    mastery_score: Mapped[float] = mapped_column(Float, default=0.0)
-    wrong_answers_count: Mapped[int] = mapped_column(default=0)
-    last_practiced: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        server_default=func.now()
-    )
-
-
 class AICache(Base):
     __tablename__ = "ai_cache"
 

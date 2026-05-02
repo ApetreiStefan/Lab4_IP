@@ -24,3 +24,12 @@ venv/
 .idea/
 target/
 *.iml
+
+.scannerwork
+
+.coverage
+coverage.xml
+tests.zip
+rezultate_benchmark.json
+prompts.md
+quiz.json

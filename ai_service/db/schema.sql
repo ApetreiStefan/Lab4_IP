@@ -1,4 +1,3 @@
--- 1. Istoricul generărilor (extins cu coloana de dificultate)
 CREATE TABLE IF NOT EXISTS ai_records (
     id UUID PRIMARY KEY,
     user_id UUID NOT NULL,

@@ -57,5 +57,6 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> st
 if __name__ == "__main__":
     sample_lesson_type = "Biology"
     sample_lesson_text = "Photosynthesis is the process used by plants, algae and certain bacteria to harness energy from sunlight and turn it into chemical energy. Oxygen is a byproduct."
+    sample_difficulty = "medium"  # Am adăugat argumentul lipsă pentru apelul de test
 
-    print(generate_pop_quiz(sample_lesson_type, sample_lesson_text))
+    print(generate_pop_quiz(sample_lesson_type, sample_lesson_text, sample_difficulty))
