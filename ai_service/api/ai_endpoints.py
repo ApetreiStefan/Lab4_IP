@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Union
+from typing import Any
 import inspect
 from ai_service.services.gen_popquiz import generate_pop_quiz
 from ai_service.services.gen_popquiz_explain import generate_answer_explanations
@@ -24,6 +25,19 @@ class PopQuizRequest(BaseModel):
     lesson_type: str = Field(default="General", description="Topic/category of the lesson")
     lesson_text: str = Field(..., description="Lesson content used to generate the pop quiz")
     difficulty: str = Field(default="easy", description="Quiz difficulty: easy|medium|hard")
+
+
+class PopQuizExplanationRequest(BaseModel):
+    lesson_text: str = Field(...,
+                             description="The original text of the lesson")
+    quiz_json: str | list[dict[str, Any]] = Field(
+        ...,
+        description="The quiz JSON returned by the pop quiz generator. You may pass it as a JSON string.",
+    )
+    user_answers: list[list[str]] = Field(
+        ...,
+        description='User selected answers per question',
+    )
 
 
 class FinalTestRequest(BaseModel):
@@ -154,6 +168,43 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
                 or "gemini_api_key" in lowered
                 or "google_api_key" in lowered
                 or "invalid test_json" in lowered
+                or "mismatch" in lowered
+        ):
+            status_code = 400
+        raise HTTPException(status_code=status_code, detail=message)
+
+    return parsed
+
+
+@router.post("/v1/pop-quiz-explanation")
+def pop_quiz_explanation(payload: PopQuizExplanationRequest):
+    quiz_json_str = (
+        json.dumps(payload.quiz_json, ensure_ascii=False)
+        if isinstance(payload.quiz_json, list)
+        else payload.quiz_json
+    )
+
+    explanations_json = generate_answer_explanations(
+        lesson_text=payload.lesson_text,
+        quiz_json=quiz_json_str,
+        user_answers=payload.user_answers,
+    )
+
+    try:
+        parsed = json.loads(explanations_json)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
+
+    if isinstance(parsed, dict) and parsed.get("error"):
+        message = str(parsed["error"])
+        status_code = 500
+        lowered = message.lower()
+        if (
+                "api key" in lowered
+                or "gemini_api_key" in lowered
+                or "google_api_key" in lowered
+                or "invalid quiz_json" in lowered
                 or "mismatch" in lowered
         ):
             status_code = 400
