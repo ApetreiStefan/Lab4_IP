@@ -63,21 +63,23 @@ async def generate_paragraph_explanation(
     try:
         client = genai.Client(api_key=api_key)
 
-        response = client.models.generate_content(
+        # Folosim .aio. pentru a face apelul non-blocant!
+        response = await client.aio.models.generate_content(
             model='gemma-3-27b-it',
             contents=prompt,
         )
 
         raw_text = response.text
-
         match = re.search(r'(\{.*\}|\[.*\])', raw_text, re.DOTALL)
 
         if not match:
-            return {"error": "Failed to extract valid JSON."}
+            # Nu mai dăm eroare dacă ratează JSON-ul, îi creăm noi un fallback
+            parsed_json = {"explanation": raw_text.strip()}
+        else:
+            json_string = match.group(0)
+            parsed_json = json.loads(json_string)
 
-        json_string = match.group(0)
-        parsed_json = json.loads(json_string)
-
+        # Aici salvăm în cache (O SINGURĂ DATĂ)
         await repo.save_to_cache(confusing_paragraph, parsed_json)
 
         return parsed_json

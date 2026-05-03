@@ -26,10 +26,15 @@ class DbPopQuizRequest(BaseModel):
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the pop quiz")
 
+
 class PopQuizRequest(BaseModel):
-    lesson_type: str = Field(default="General", description="Topic/category of the lesson")
-    lesson_text: str = Field(..., description="Lesson content used to generate the pop quiz")
-    difficulty: str = Field(default="easy", description="Quiz difficulty: easy|medium|hard")
+    lesson_type: str = Field(
+        default="General", description="Topic/category of the lesson")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the pop quiz")
+    difficulty: str = Field(
+        default="easy", description="Quiz difficulty: easy|medium|hard")
+
 
 class PopQuizExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -52,10 +57,15 @@ class DbFinalTestRequest(BaseModel):
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the final test")
 
+
 class FinalTestRequest(BaseModel):
-    topic_name: str = Field(..., description="The topic name for the final test")
-    lesson_text: str = Field(..., description="Lesson content used to generate the final test")
-    difficulty: str = Field(default="easy", description="Test difficulty: easy|medium|hard")
+    topic_name: str = Field(...,
+                            description="The topic name for the final test")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the final test")
+    difficulty: str = Field(
+        default="easy", description="Test difficulty: easy|medium|hard")
+
 
 class FinalTestExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -92,7 +102,8 @@ def get_pop_quiz(payload: PopQuizRequest):
     try:
         parsed = json.loads(quiz_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -103,6 +114,7 @@ def get_pop_quiz(payload: PopQuizRequest):
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
+
 
 @router.post("/v1/db-pop-quiz")
 async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
@@ -184,7 +196,6 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     return parsed
 
 
-
 @router.post("/v1/final-test")
 def get_final_test(payload: FinalTestRequest):
     test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text,
@@ -193,7 +204,8 @@ def get_final_test(payload: FinalTestRequest):
     try:
         parsed = json.loads(test_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -204,6 +216,7 @@ def get_final_test(payload: FinalTestRequest):
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
+
 
 @router.post("/v1/db-final-test")
 async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
@@ -287,28 +300,32 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
 
 @router.post("/v1/paragraph-explanation")
 async def paragraph_explanation(
-    payload: ParagraphExplanationRequest,
-    db: AsyncSession = Depends(get_db)
+        payload: ParagraphExplanationRequest,
+        db: AsyncSession = Depends(get_db)
 ):
-    maybe_awaitable = generate_paragraph_explanation(
-        db=db,
-        topic_name=payload.topic_name,
-        confusing_paragraph=payload.confusing_paragraph,
-        education_level=payload.education_level,
-    )
+    try:
+        # Lăsăm funcția de serviciu să se ocupe singură de cache (eliminăm dubla salvare)
+        result = await generate_paragraph_explanation(
+            db=db,
+            topic_name=payload.topic_name,
+            confusing_paragraph=payload.confusing_paragraph,
+            education_level=payload.education_level,
+        )
 
-    result = await maybe_awaitable if inspect.isawaitable(maybe_awaitable) else maybe_awaitable
+        # Verificăm dacă serviciul ne-a trimis o eroare critică
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=500, detail=result["error"])
 
-    if isinstance(result, dict) and result.get("error"):
-        message = result["error"]
-        status_code = 500
+        content_str = json.dumps(result) if isinstance(
+            result, dict) else str(result)
+        return {"content": content_str}
 
-        if "api key" in message.lower():
-            status_code = 400
-
-        raise HTTPException(status_code=status_code, detail=message)
-
-    return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/v1/reformat-professor")
