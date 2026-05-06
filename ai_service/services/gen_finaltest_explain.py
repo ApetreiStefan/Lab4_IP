@@ -15,7 +15,7 @@ def grade_and_explain_mcq_test(
     """
     Takes the lesson text, the generated 10-question MCQ test, and the user's answers.
     Calls Gemma-3-27B to evaluate the answers and generate a JSON array of explanations.
-    
+
     :param lesson_text: The original lesson text.
     :param test_json: The JSON string returned by `generate_final_mcq_test`.
     :param user_answers: A list of lists containing the user's selected strings. 
@@ -73,7 +73,7 @@ def grade_and_explain_mcq_test(
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 

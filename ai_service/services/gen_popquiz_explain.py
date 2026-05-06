@@ -15,7 +15,7 @@ def generate_answer_explanations(
     """
     Takes the lesson text, the generated quiz, and the user's submitted answers.
     Calls Gemma-3-27B to generate a JSON array of explanations.
-    
+
     :param lesson_text: The original text of the lesson.
     :param quiz_json: The JSON string returned by the `generate_pop_quiz` function.
     :param user_answers: A list of lists containing the user's chosen strings. 
@@ -63,12 +63,13 @@ def generate_answer_explanations(
         evaluation_context += f"Actual Correct Answer(s): {correct_answers}\n"
         evaluation_context += f"User's Answer(s): {user_ans}\n\n"
 
-    prompt = prompt_popquiz_explain(lesson_text, len(quiz_data), evaluation_context)
+    prompt = prompt_popquiz_explain(
+        lesson_text, len(quiz_data), evaluation_context)
 
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 
@@ -111,5 +112,6 @@ if __name__ == "__main__":
         ["Plants"]
     ]
 
-    result = generate_answer_explanations(sample_lesson, sample_quiz_json, sample_user_answers)
+    result = generate_answer_explanations(
+        sample_lesson, sample_quiz_json, sample_user_answers)
     print(result)

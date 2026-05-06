@@ -32,7 +32,7 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> st
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 

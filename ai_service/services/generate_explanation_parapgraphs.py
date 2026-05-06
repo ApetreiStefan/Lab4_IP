@@ -64,7 +64,7 @@ async def generate_paragraph_explanation(
         client = genai.Client(api_key=api_key)
 
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 

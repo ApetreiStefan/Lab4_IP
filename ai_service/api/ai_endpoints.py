@@ -1,5 +1,6 @@
 import json
 import inspect
+import uuid
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -13,7 +14,7 @@ from ai_service.services.gen_finaltest import generate_final_mcq_test
 from ai_service.services.gen_finaltest_explain import grade_and_explain_mcq_test
 from ai_service.services.generate_explanation_parapgraphs import generate_paragraph_explanation
 from ai_service.services.reformat_professor import refine_academic_text
-from ai_service.db.database import get_db, StudentMastery  # Adăugat StudentMastery
+from ai_service.db.database import get_db, StudentMastery
 
 router = APIRouter()
 
@@ -21,15 +22,20 @@ router = APIRouter()
 class DbPopQuizRequest(BaseModel):
     user_id: str = Field(...,
                          description="ID-ul studentului pentru preluarea mastery score-ului")
-    lesson_type: str = Field(
+    topic_name: str = Field(
         default="General", description="Topic/category of the lesson")
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the pop quiz")
 
+
 class PopQuizRequest(BaseModel):
-    lesson_type: str = Field(default="General", description="Topic/category of the lesson")
-    lesson_text: str = Field(..., description="Lesson content used to generate the pop quiz")
-    difficulty: str = Field(default="easy", description="Quiz difficulty: easy|medium|hard")
+    lesson_type: str = Field(
+        default="General", description="Topic/category of the lesson")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the pop quiz")
+    difficulty: str = Field(
+        default="easy", description="Quiz difficulty: easy|medium|hard")
+
 
 class PopQuizExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -52,10 +58,15 @@ class DbFinalTestRequest(BaseModel):
     lesson_text: str = Field(...,
                              description="Lesson content used to generate the final test")
 
+
 class FinalTestRequest(BaseModel):
-    topic_name: str = Field(..., description="The topic name for the final test")
-    lesson_text: str = Field(..., description="Lesson content used to generate the final test")
-    difficulty: str = Field(default="easy", description="Test difficulty: easy|medium|hard")
+    topic_name: str = Field(...,
+                            description="The topic name for the final test")
+    lesson_text: str = Field(...,
+                             description="Lesson content used to generate the final test")
+    difficulty: str = Field(
+        default="easy", description="Test difficulty: easy|medium|hard")
+
 
 class FinalTestExplanationRequest(BaseModel):
     lesson_text: str = Field(...,
@@ -84,7 +95,7 @@ class ProfessorReformatRequest(BaseModel):
                                 description="Text to rewrite more clearly and academically")
 
 
-@router.post("/v1/pop-quiz")
+@router.post("/api/v1/subcapitols/check-quiz/questions/generate")
 def get_pop_quiz(payload: PopQuizRequest):
     quiz_json = generate_pop_quiz(lesson_type=payload.lesson_type, lesson_text=payload.lesson_text,
                                   difficulty=payload.difficulty)
@@ -92,7 +103,8 @@ def get_pop_quiz(payload: PopQuizRequest):
     try:
         parsed = json.loads(quiz_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -104,13 +116,20 @@ def get_pop_quiz(payload: PopQuizRequest):
 
     return parsed
 
-@router.post("/v1/db-pop-quiz")
+
+@router.post("/api/v1/subcapitols/check-quiz/questions/generate/adaptive")
 async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
+
+    # CONVERSIE UUID
+    try:
+        user_uuid = uuid.UUID(payload.user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
 
     # 1. Căutăm contextul studentului în Baza de Date
     stmt = select(StudentMastery.mastery_score).where(
-        StudentMastery.user_id == payload.user_id,
-        StudentMastery.topic_name == payload.lesson_type
+        StudentMastery.user_id == user_uuid,
+        StudentMastery.topic_name == payload.topic_name
     )
     result = await db.execute(stmt)
     # Setăm default la 0.5 dacă studentul/materia nu există
@@ -126,7 +145,7 @@ async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_
 
     # 3. Generăm testul
     quiz_json = generate_pop_quiz(
-        lesson_type=payload.lesson_type,
+        lesson_type=payload.topic_name,
         lesson_text=payload.lesson_text,
         difficulty=calculated_difficulty
     )
@@ -147,7 +166,7 @@ async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_
     return parsed
 
 
-@router.post("/v1/pop-quiz-explanation")
+@router.post("/api/v1/subcapitols/check-quiz/explain")
 def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     quiz_json_str = (
         json.dumps(payload.quiz_json, ensure_ascii=False)
@@ -184,8 +203,7 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     return parsed
 
 
-
-@router.post("/v1/final-test")
+@router.post("/api/v1/lessons/final-quiz/questions/generate")
 def get_final_test(payload: FinalTestRequest):
     test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text,
                                         difficulty=payload.difficulty)
@@ -193,7 +211,8 @@ def get_final_test(payload: FinalTestRequest):
     try:
         parsed = json.loads(test_json)
     except json.JSONDecodeError as exc:
-        raise HTTPException(status_code=500, detail="Generator returned invalid JSON") from exc
+        raise HTTPException(
+            status_code=500, detail="Generator returned invalid JSON") from exc
 
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
@@ -205,12 +224,19 @@ def get_final_test(payload: FinalTestRequest):
 
     return parsed
 
-@router.post("/v1/db-final-test")
+
+@router.post("/api/v1/lessons/final-quiz/questions/generate/adaptive")
 async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
+
+    # CONVERSIE UUID
+    try:
+        user_uuid = uuid.UUID(payload.user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid UUID format")
 
     # 1. Căutăm contextul studentului în Baza de Date
     stmt = select(StudentMastery.mastery_score).where(
-        StudentMastery.user_id == payload.user_id,
+        StudentMastery.user_id == user_uuid,
         StudentMastery.topic_name == payload.topic_name
     )
     result = await db.execute(stmt)
@@ -248,7 +274,7 @@ async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(
     return parsed
 
 
-@router.post("/v1/final-test-explanation")
+@router.post("/api/v1/lessons/final-quiz/explain")
 def final_test_explanation(payload: FinalTestExplanationRequest):
     test_json_str = (
         json.dumps(payload.test_json, ensure_ascii=False)
@@ -285,33 +311,37 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
     return parsed
 
 
-@router.post("/v1/paragraph-explanation")
+@router.post("/api/v1/blocks/explain")
 async def paragraph_explanation(
-    payload: ParagraphExplanationRequest,
-    db: AsyncSession = Depends(get_db)
+        payload: ParagraphExplanationRequest,
+        db: AsyncSession = Depends(get_db)
 ):
-    maybe_awaitable = generate_paragraph_explanation(
-        db=db,
-        topic_name=payload.topic_name,
-        confusing_paragraph=payload.confusing_paragraph,
-        education_level=payload.education_level,
-    )
+    try:
+        # Lăsăm funcția de serviciu să se ocupe singură de cache (eliminăm dubla salvare)
+        result = await generate_paragraph_explanation(
+            db=db,
+            topic_name=payload.topic_name,
+            confusing_paragraph=payload.confusing_paragraph,
+            education_level=payload.education_level,
+        )
 
-    result = await maybe_awaitable if inspect.isawaitable(maybe_awaitable) else maybe_awaitable
+        # Verificăm dacă serviciul ne-a trimis o eroare critică
+        if isinstance(result, dict) and result.get("error"):
+            raise HTTPException(status_code=500, detail=result["error"])
 
-    if isinstance(result, dict) and result.get("error"):
-        message = result["error"]
-        status_code = 500
+        content_str = json.dumps(result) if isinstance(
+            result, dict) else str(result)
+        return {"content": content_str}
 
-        if "api key" in message.lower():
-            status_code = 400
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
-        raise HTTPException(status_code=status_code, detail=message)
 
-    return result
-
-
-@router.post("/v1/reformat-professor")
+@router.post("/api/v1/content-blocks/rewrite")
 def reformat_professor(payload: ProfessorReformatRequest):
     result_json = refine_academic_text(
         topic_name=payload.topic_name, ambiguous_text=payload.ambiguous_text)

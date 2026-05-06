@@ -34,7 +34,7 @@ def refine_academic_text(topic_name: str, ambiguous_text: str) -> str:
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 
