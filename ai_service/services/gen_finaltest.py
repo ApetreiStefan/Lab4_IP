@@ -5,6 +5,7 @@ import importlib
 from google import genai
 from ai_service.core.prompt_engine import prompt_finaltest
 
+
 def generate_final_mcq_test(topic_name: str, lesson_text: str, difficulty: str) -> str:
     """
     Calls Google AI Studio's Gemma-3-27B to generate a 10-question MCQ test.
@@ -26,15 +27,15 @@ def generate_final_mcq_test(topic_name: str, lesson_text: str, difficulty: str) 
             }
         )
 
-    prompt = prompt_finaltest(topic_name,lesson_text,difficulty)
+    prompt = prompt_finaltest(topic_name, lesson_text, difficulty)
 
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it', 
+            model='gemini-2.5-flash',
             contents=prompt,
         )
-        
+
         raw_text = response.text
 
         # Trim to extract only JSON
@@ -42,7 +43,7 @@ def generate_final_mcq_test(topic_name: str, lesson_text: str, difficulty: str) 
 
         if match:
             json_string = match.group(0)
-            json.loads(json_string) # Validate syntax
+            json.loads(json_string)  # Validate syntax
             return json_string
         else:
             return json.dumps({"error": "Failed to extract valid JSON from the AI response."})

@@ -8,7 +8,7 @@ from ai_service.core.prompt_engine import prompt_popquiz
 
 def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> str:
     """
-    Calls Google AI Studio's Gemma-3-27B to generate a 5-question pop quiz.
+    Calls Google AI Studio's gemini-2.5-flash to generate a 5-question pop quiz.
     Returns a valid JSON string containing the quiz.
     """
     try:
@@ -32,7 +32,7 @@ def generate_pop_quiz(lesson_type: str, lesson_text: str, difficulty: str) -> st
     try:
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 

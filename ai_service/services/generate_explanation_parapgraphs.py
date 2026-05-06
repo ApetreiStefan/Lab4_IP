@@ -65,7 +65,7 @@ async def generate_paragraph_explanation(
 
         # Folosim .aio. pentru a face apelul non-blocant!
         response = await client.aio.models.generate_content(
-            model='gemma-3-27b-it',
+            model='gemini-2.5-flash',
             contents=prompt,
         )
 
