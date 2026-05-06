@@ -94,7 +94,7 @@ class ProfessorReformatRequest(BaseModel):
                                 description="Text to rewrite more clearly and academically")
 
 
-@router.post("/v1/pop-quiz")
+@router.post("/api/v1/subcapitols/check-quiz/questions/generate")
 def get_pop_quiz(payload: PopQuizRequest):
     quiz_json = generate_pop_quiz(lesson_type=payload.lesson_type, lesson_text=payload.lesson_text,
                                   difficulty=payload.difficulty)
@@ -116,7 +116,7 @@ def get_pop_quiz(payload: PopQuizRequest):
     return parsed
 
 
-@router.post("/v1/db-pop-quiz")
+@router.post("/api/v1/subcapitols/check-quiz/questions/generate/adaptive")
 async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
 
     # 1. Căutăm contextul studentului în Baza de Date
@@ -159,7 +159,7 @@ async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_
     return parsed
 
 
-@router.post("/v1/pop-quiz-explanation")
+@router.post("/api/v1/subcapitols/check-quiz/explain")
 def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     quiz_json_str = (
         json.dumps(payload.quiz_json, ensure_ascii=False)
@@ -196,7 +196,7 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
     return parsed
 
 
-@router.post("/v1/final-test")
+@router.post("/api/v1/lessons/final-quiz/questions/generate")
 def get_final_test(payload: FinalTestRequest):
     test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text,
                                         difficulty=payload.difficulty)
@@ -218,7 +218,7 @@ def get_final_test(payload: FinalTestRequest):
     return parsed
 
 
-@router.post("/v1/db-final-test")
+@router.post("/api/v1/lessons/final-quiz/questions/generate/adaptive")
 async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
 
     # 1. Căutăm contextul studentului în Baza de Date
@@ -261,7 +261,7 @@ async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(
     return parsed
 
 
-@router.post("/v1/final-test-explanation")
+@router.post("/api/v1/lessons/final-quiz/explain")
 def final_test_explanation(payload: FinalTestExplanationRequest):
     test_json_str = (
         json.dumps(payload.test_json, ensure_ascii=False)
@@ -298,7 +298,7 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
     return parsed
 
 
-@router.post("/v1/paragraph-explanation")
+@router.post("/api/v1/blocks/explain")
 async def paragraph_explanation(
         payload: ParagraphExplanationRequest,
         db: AsyncSession = Depends(get_db)
@@ -328,7 +328,7 @@ async def paragraph_explanation(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/v1/reformat-professor")
+@router.post("/api/v1/content-blocks/rewrite")
 def reformat_professor(payload: ProfessorReformatRequest):
     result_json = refine_academic_text(
         topic_name=payload.topic_name, ambiguous_text=payload.ambiguous_text)
