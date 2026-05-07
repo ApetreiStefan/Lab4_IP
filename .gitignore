@@ -7,9 +7,9 @@ __pycache__/
 .pytest_cache/
 
 # Virtual environment
-.env
+ai_service/.env
 venv/
-.env/
+ai_service/.env/
 .venv
 
 # Logs
