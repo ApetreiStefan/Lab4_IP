@@ -42,7 +42,7 @@ def grade_and_explain_mcq_test(
         lesson_text: str,
         test_json: str | list[dict[str, Any]],
         user_answers: list,
-) -> str:
+) -> dict:
 
     if not get_api_key():
         return missing_key_error()
@@ -79,4 +79,6 @@ def grade_and_explain_mcq_test(
 
     prompt = prompt_finaltest_explain(lesson_text, evaluation_context)
 
-    return call_gemini(prompt)
+    return {
+      "results": call_gemini(prompt)
+    }
