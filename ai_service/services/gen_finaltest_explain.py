@@ -5,51 +5,78 @@ from ai_service.core.prompt_engine import prompt_finaltest_explain
 from ai_service.services.gemini_utils import call_gemini, get_api_key, missing_key_error
 
 
+def _normalize_test_json(test_json: str | list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Acceptă:
+    - list[dict] (ideal)
+    - string JSON normal
+    - string JSON dublu-encodat (bug din Java)
+    """
+
+    if isinstance(test_json, list):
+        return test_json
+
+    if not isinstance(test_json, str):
+        raise ValueError("test_json must be string or list")
+
+    # primul parse
+    try:
+        data = json.loads(test_json)
+    except json.JSONDecodeError:
+        raise ValueError("Invalid JSON string in test_json")
+
+    # dacă încă e string => dublu-encodat
+    if isinstance(data, str):
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            raise ValueError("Double-encoded JSON is invalid")
+
+    if not isinstance(data, list):
+        raise ValueError("test_json must be a JSON array (list)")
+
+    return data
+
+
 def grade_and_explain_mcq_test(
         lesson_text: str,
         test_json: str | list[dict[str, Any]],
         user_answers: list,
 ) -> str:
-    """
-    Primește textul lecției, testul MCQ generat și răspunsurile utilizatorului.
-    Apelează Gemini pentru a evalua răspunsurile și a genera explicații JSON.
 
-    :param lesson_text: Textul original al lecției.
-    :param test_json: JSON string sau listă returnată de generate_final_mcq_test.
-    :param user_answers: Listă de liste cu răspunsurile selectate de utilizator.
-                         (ex: [["Oxygen"], ["Plants", "Algae"], ...])
-    """
     if not get_api_key():
         return missing_key_error()
 
-    # Parsare și validare test_json
-    if isinstance(test_json, list):
-        test_data = test_json
-    else:
-        try:
-            test_data = json.loads(test_json)
-        except json.JSONDecodeError:
-            return json.dumps({"error": "Invalid test_json provided. Must be a valid JSON string."})
+    # ✅ normalize JSON (FIX PRINCIPAL)
+    try:
+        test_data = _normalize_test_json(test_json)
+    except ValueError as e:
+        return json.dumps({"error": str(e)})
 
-    if not isinstance(test_data, list):
-        return json.dumps({"error": "Invalid test_json provided. Must be a JSON array of questions."})
+    # validare răspunsuri
+    if not user_answers:
+        return json.dumps({"error": "user_answers must not be empty"})
 
     if len(test_data) != len(user_answers):
         return json.dumps({
-            "error": f"Mismatch: Expected 10 answers, but received {len(user_answers)}."
+            "error": f"Mismatch: expected {len(test_data)} answers, got {len(user_answers)}"
         })
 
-    # Construire context de evaluare
+    # construire context evaluare
     evaluation_context = ""
+
     for i, (q_item, user_ans) in enumerate(zip(test_data, user_answers)):
         question = q_item.get("question", "Unknown Question")
+        options = q_item.get("options", [])
         num_correct = q_item.get("num_correct", 1)
-        correct_answers = q_item.get("options", [])[:num_correct]
+
+        correct_answers = options[:num_correct] if isinstance(options, list) else []
 
         evaluation_context += f"--- Question {i + 1} ---\n"
         evaluation_context += f"Question: {question}\n"
-        evaluation_context += f"Actual Correct Answer(s): {correct_answers}\n"
-        evaluation_context += f"User's Selected Answer(s): {user_ans}\n\n"
+        evaluation_context += f"Correct Answer(s): {correct_answers}\n"
+        evaluation_context += f"User Answer(s): {user_ans}\n\n"
 
     prompt = prompt_finaltest_explain(lesson_text, evaluation_context)
+
     return call_gemini(prompt)
