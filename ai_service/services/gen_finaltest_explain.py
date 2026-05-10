@@ -79,6 +79,13 @@ def grade_and_explain_mcq_test(
 
     prompt = prompt_finaltest_explain(lesson_text, evaluation_context)
 
+    response = call_gemini(prompt)
+
+    try:
+        parsed = json.loads(response) if isinstance(response, str) else response
+    except Exception:
+        parsed = []
+
     return {
-      "results": call_gemini(prompt)
+        "content": json.dumps(parsed)
     }
