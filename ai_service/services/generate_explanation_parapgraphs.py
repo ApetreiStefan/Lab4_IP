@@ -1,17 +1,11 @@
-import os
 import json
-import re
-import importlib
-import hashlib
-
-from google import genai
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.dialects.postgresql import insert
 
-from ai_service.core.prompt_engine import (prompt_explanation_paragraphs)
-from ai_service.db.database import AICache, get_db
+from ai_service.core.prompt_engine import prompt_explanation_paragraphs
+from ai_service.db.database import get_db
 from ai_service.db.repositories import AIRepository
+# Importăm funcția centralizată care știe să facă retries și fallback
+from ai_service.services.gemini_utils import call_gemini
 
 
 async def generate_paragraph_explanation(
@@ -24,23 +18,10 @@ async def generate_paragraph_explanation(
     Flow:
     1. Verifică cache (repo)
     2. Dacă există → return
-    3. Dacă nu → AI → save cache → return
+    3. Dacă nu → AI (cu retries & fallback) → save cache → return
     """
 
     repo = AIRepository(db)
-
-    # --- Load .env ---
-    try:
-        dotenv_module = importlib.import_module("dotenv")
-        load_dotenv = getattr(dotenv_module, "load_dotenv", None)
-        if callable(load_dotenv):
-            load_dotenv()
-    except Exception:
-        pass
-
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        return {"error": "No API key provided."}
 
     cached = await repo.get_cached_response(confusing_paragraph)
 
@@ -60,24 +41,17 @@ async def generate_paragraph_explanation(
         education_level
     )
 
+    # --- APELĂM AI-UL PROTEJAT ---
+    json_string = call_gemini(prompt)
+
     try:
-        client = genai.Client(api_key=api_key)
-
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
-        )
-
-        raw_text = response.text
-
-        match = re.search(r'(\{.*\}|\[.*\])', raw_text, re.DOTALL)
-
-        if not match:
-            return {"error": "Failed to extract valid JSON."}
-
-        json_string = match.group(0)
         parsed_json = json.loads(json_string)
 
+        # call_gemini returnează mereu o cheie "error" dacă ceva a picat complet
+        if isinstance(parsed_json, dict) and "error" in parsed_json:
+            return parsed_json
+
+        # Salvare doar dacă a fost un succes
         await repo.save_to_cache(confusing_paragraph, parsed_json)
 
         return parsed_json
@@ -85,4 +59,4 @@ async def generate_paragraph_explanation(
     except json.JSONDecodeError:
         return {"error": "Invalid JSON from AI."}
     except Exception as e:
-        return {"error": f"API error: {str(e)}"}
+        return {"error": f"Internal execution error: {str(e)}"}

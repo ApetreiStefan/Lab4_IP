@@ -24,3 +24,19 @@ ai_service/.env/
 .idea/
 target/
 *.iml
+
+# SonarQube Scanner
+.scannerwork/
+
+# Test Coverage Reports
+.coverage
+coverage.xml
+htmlcov/
+
+# Database Client / IDE sessions (ex: DBeaver, DataGrip)
+*.session.sql
+"Neon DB Backend.session.sql"
+
+# Arhive locale
+*.zip
+tests.zip

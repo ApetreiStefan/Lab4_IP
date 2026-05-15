@@ -1,14 +1,17 @@
 """
 Utilitare comune pentru serviciile AI.
 Elimină codul duplicat de dotenv loading, API key retrieval și apel Gemini.
+Include protecție la rate-limits (Tenacity) și Fallback pe model secundar.
 """
 
 import os
 import json
 import re
 import importlib
+import time
 
 from google import genai
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 
 def _load_dotenv() -> None:
@@ -38,23 +41,50 @@ def missing_key_error() -> str:
     })
 
 
+# --- LAYER 1: Reîncercare (Tenacity) ---
+# Încearcă de max 3 ori. Pauză exponențială (ex: 2s, 4s, 8s) între încercări.
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+def _execute_gemini_call(client: genai.Client, model_name: str, prompt: str) -> str:
+    response = client.models.generate_content(
+        model=model_name,
+        contents=prompt,
+    )
+    return response.text
+
+
 def call_gemini(prompt: str) -> str:
     """
-    Apelează Gemini cu prompt-ul dat și returnează primul bloc JSON extras.
+    Apelează Gemini cu prompt-ul dat, protejat de retries și model fallback.
     Returnează un JSON string — fie rezultatul valid, fie un dict {"error": "..."}.
     """
     api_key = get_api_key()
     if not api_key:
         return missing_key_error()
 
-    try:
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-        )
-        raw_text = response.text
+    client = genai.Client(api_key=api_key)
+    raw_text = ""
 
+    try:
+        # Încercăm cu modelul principal (cu retries)
+        raw_text = _execute_gemini_call(client, "gemini-2.5-flash", prompt)
+    except Exception as e:
+        error_msg = str(e).lower()
+
+        # --- LAYER 2: Fallback Logic ---
+        # Verificăm dacă eroarea ține de suprasolicitare sau limită de cotă
+        if any(k in error_msg for k in ["quota", "exhausted", "overloaded", "503", "429"]):
+            print(f"[Fallback] Modelul gemini-2.5-flash a eșuat. Comutare pe gemini-1.5-flash... Motiv: {error_msg}")
+            try:
+                time.sleep(1)  # Pauză scurtă de siguranță înainte de fallback
+                # Executăm fallback (tot cu retries, direct pe modelul vechi)
+                raw_text = _execute_gemini_call(client, "gemini-1.5-flash", prompt)
+            except Exception as fallback_e:
+                return json.dumps({"error": f"API fallback error: {str(fallback_e)}"})
+        else:
+            return json.dumps({"error": f"API execution error: {str(e)}"})
+
+    # Extragerea JSON-ului
+    try:
         match = re.search(r"(\{.*\}|\[.*\])", raw_text, re.DOTALL)
         if match:
             json_string = match.group(0)
@@ -66,4 +96,4 @@ def call_gemini(prompt: str) -> str:
     except json.JSONDecodeError:
         return json.dumps({"error": "The AI generated invalid JSON that could not be parsed."})
     except Exception as e:
-        return json.dumps({"error": f"API or execution error: {str(e)}"})
+        return json.dumps({"error": f"Parsing error: {str(e)}"})
