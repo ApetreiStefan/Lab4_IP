@@ -119,7 +119,6 @@ def get_pop_quiz(payload: PopQuizRequest):
 
 @router.post("/api/v1/subcapitols/check-quiz/questions/generate/adaptive")
 async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_db)):
-
     # CONVERSIE UUID
     try:
         user_uuid = uuid.UUID(payload.user_id)
@@ -207,7 +206,6 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
 def get_final_test(payload: FinalTestRequest):
     test_json = generate_final_mcq_test(topic_name=payload.topic_name, lesson_text=payload.lesson_text,
                                         difficulty=payload.difficulty)
-
     try:
         parsed = json.loads(test_json)
     except json.JSONDecodeError as exc:
@@ -227,7 +225,6 @@ def get_final_test(payload: FinalTestRequest):
 
 @router.post("/api/v1/lessons/final-quiz/questions/generate/adaptive")
 async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(get_db)):
-
     # CONVERSIE UUID
     try:
         user_uuid = uuid.UUID(payload.user_id)
