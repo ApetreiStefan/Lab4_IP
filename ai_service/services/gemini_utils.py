@@ -111,14 +111,27 @@ def call_gemini(prompt: str) -> str:
     try:
         raw = _call_with_fallback(client, prompt)
     except genai_errors.APIError as e:
-        # NU loga e.message direct dacă promptul conține PII
+        # Distincție între tipuri de 429 — RPD vs RPM
+        if e.code == 429:
+            msg = (getattr(e, "message", "") or "").lower()
+            # Indicatori pentru cotă zilnică epuizată (RPD)
+            # Google folosește "quota", "exhausted", "RESOURCE_EXHAUSTED",
+            # "per day", "daily" în mesaje pentru limita zilnică.
+            is_daily = any(kw in msg for kw in [
+                "per day", "daily", "rpd",
+                "quota exceeded", "resource_exhausted", "exhausted"
+            ])
+            error_type = "rate_limit_daily" if is_daily else "rate_limit_minute"
+            return json.dumps({
+                "error": f"API error: HTTP 429",
+                "error_type": error_type,
+            })
         return json.dumps({"error": f"API error: HTTP {e.code}"})
     except Exception as e:
         return json.dumps({"error": f"Unexpected error: {type(e).__name__}"})
 
-    # Cu response_mime_type="application/json" nu mai e nevoie de regex
     try:
-        json.loads(raw)  # validare
+        json.loads(raw)
         return raw
     except json.JSONDecodeError:
         return json.dumps({"error": "Model returned invalid JSON."})

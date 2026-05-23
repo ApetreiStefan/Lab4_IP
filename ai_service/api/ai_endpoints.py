@@ -112,6 +112,12 @@ def get_pop_quiz(payload: PopQuizRequest):
         lowered = message.lower()
         if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
@@ -158,8 +164,15 @@ async def db_pop_quiz(payload: DbPopQuizRequest, db: AsyncSession = Depends(get_
     if isinstance(parsed, dict) and parsed.get("error"):
         message = str(parsed["error"])
         status_code = 500
-        if "api key" in message.lower() or "gemini_api_key" in message.lower() or "google_api_key" in message.lower():
+        lowered = message.lower()
+        if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
@@ -197,6 +210,12 @@ def pop_quiz_explanation(payload: PopQuizExplanationRequest):
                 or "mismatch" in lowered
         ):
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
@@ -218,6 +237,12 @@ def get_final_test(payload: FinalTestRequest):
         lowered = message.lower()
         if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
@@ -266,6 +291,12 @@ async def db_final_test(payload: DbFinalTestRequest, db: AsyncSession = Depends(
         lowered = message.lower()
         if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
@@ -303,10 +334,15 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
                 or "mismatch" in lowered
         ):
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     # Backend Java așteaptă FinalTestExplanationResponse cu un singur câmp "content"
-    # care e stringified JSON al array-ului de explicații
     return {"content": json.dumps(parsed, ensure_ascii=False)}
 
 
@@ -326,7 +362,15 @@ async def paragraph_explanation(
 
         # Verificăm dacă serviciul ne-a trimis o eroare critică
         if isinstance(result, dict) and result.get("error"):
-            raise HTTPException(status_code=500, detail=result["error"])
+            message = str(result["error"])
+            status_code = 500
+            if result.get("error_type") == "rate_limit_daily":
+                status_code = 429
+                message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+            elif result.get("error_type") == "rate_limit_minute":
+                status_code = 429
+                message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
+            raise HTTPException(status_code=status_code, detail=message)
 
         content_str = json.dumps(result) if isinstance(
             result, dict) else str(result)
@@ -357,6 +401,12 @@ def reformat_professor(payload: ProfessorReformatRequest):
         lowered = message.lower()
         if "api key" in lowered or "gemini_api_key" in lowered or "google_api_key" in lowered:
             status_code = 400
+        elif parsed.get("error_type") == "rate_limit_daily":
+            status_code = 429
+            message = "Am atins limita zilnică de generări. Te rugăm să revii mâine după ora 10:00."
+        elif parsed.get("error_type") == "rate_limit_minute":
+            status_code = 429
+            message = "Prea multe cereri într-un interval scurt. Te rugăm să încerci din nou peste un minut."
         raise HTTPException(status_code=status_code, detail=message)
 
     return parsed
