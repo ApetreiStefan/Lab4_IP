@@ -42,8 +42,12 @@ def generate_answer_explanations(
     for i, (quiz_item, user_ans) in enumerate(zip(quiz_data, user_answers)):
         question = quiz_item.get("question", "Unknown Question")
         options = quiz_item.get("options", [])
-        num_correct = quiz_item.get("num_correct", 1)
-        correct_answers = options[:num_correct]
+        correct_index = quiz_item.get("num_correct", 0)
+        # num_correct este poziția răspunsului corect (single-answer)
+        if isinstance(correct_index, int) and 0 <= correct_index < len(options):
+            correct_answers = [options[correct_index]]
+        else:
+            correct_answers = []
 
         evaluation_context += f"Question {i + 1}: {question}\n"
         evaluation_context += f"Actual Correct Answer(s): {correct_answers}\n"
@@ -63,12 +67,12 @@ if __name__ == "__main__":
         {
             "question": "What is a byproduct of photosynthesis?",
             "options": ["Oxygen", "Dirt", "Carbon Dioxide", "Heat"],
-            "num_correct": 1,
+            "num_correct": 0,
         },
         {
-            "question": "Which organisms use photosynthesis?",
-            "options": ["Plants", "Algae", "Mammals", "Fungi"],
-            "num_correct": 2,
+            "question": "Which organism uses photosynthesis?",
+            "options": ["Plants", "Mammals", "Fungi", "Bacteria"],
+            "num_correct": 0,
         },
     ])
     sample_user_answers = [["Oxygen"], ["Plants"]]

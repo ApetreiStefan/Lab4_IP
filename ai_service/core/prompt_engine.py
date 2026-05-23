@@ -1,8 +1,4 @@
-
-
 def prompt_popquiz(lesson_type: str, lesson_text: str, difficulty: str):
-
-    # Prompt adaptiv în funcție de nivelul elevului
     difficulty_instructions = {
         "easy": "Focus on basic terminology and simple facts.",
         "medium": "Focus on understanding concepts and relationships.",
@@ -15,16 +11,20 @@ def prompt_popquiz(lesson_type: str, lesson_text: str, difficulty: str):
     Context: {difficulty_instructions.get(difficulty, "")}
 
     CRITICAL REQUIREMENTS:
-    1. Generate exactly 5 questions. Some can have one correct answer, and some can have multiple correct answers.
-    2. Output ONLY valid JSON. No conversational text, no explanations, and no markdown formatting blocks.
-    3. The JSON must be an array of objects.
-    4. Each object must have three fields: 
+    1. Generate exactly 5 single-answer questions. Each question MUST have exactly ONE correct answer. Do NOT generate questions with multiple correct answers.
+    2. Each question must have exactly 4 options: 1 correct + 3 plausible distractors.
+    3. Output ONLY valid JSON. No conversational text, no explanations, and no markdown formatting blocks (no ```json fences).
+    4. The JSON must be an array of objects.
+    5. Each object must have three fields:
     - "question" (string)
-    - "options" (array of strings)
-    - "num_correct" (integer representing how many correct answers there are).
-    5. The correct answer(s) MUST ALWAYS be placed at the very beginning of the "options" array (from index 0 up to `num_correct` - 1). 
-    6. All incorrect answers must follow the correct answers in the "options" array.
-
+    - "options" (array of exactly 4 strings)
+    - "num_correct" (the position of the correct answer)
+    6. The correct answer MUST ALWAYS be placed at index 0 of the "options" array.
+    7. The 3 incorrect answers (distractors) must follow at indices 1, 2, 3.
+    8. Distractors must be plausible and related to the lesson content, not obviously wrong.
+    9. Each question MUST test a DIFFERENT concept or fact from the lesson. Do NOT rephrase the same question with different wording.
+    10. Distractors MUST be factually incorrect ACCORDING TO THE LESSON TEXT. Never use as a distractor anything the lesson explicitly states as true. If the lesson mentions multiple items in a list (e.g., "X, Y, and Z"), do NOT use any of X, Y, or Z as a distractor.
+    11. If the Lesson Text is too short to generate 5 distinct, high-quality questions, prioritize quality over quantity — but still output exactly 5 questions, focusing on the most important facts.
     Lesson Text:
     {lesson_text}
     """
@@ -33,7 +33,6 @@ def prompt_popquiz(lesson_type: str, lesson_text: str, difficulty: str):
 
 
 def prompt_popquiz_explain(lesson_text: str, json_obj_number: int, evaluation_context: str):
-
     prompt = f"""You are an expert, empathetic educational tutor grading a pop quiz. 
     Review the original lesson text and the evaluation context showing the user's answers versus the correct answers.
 
@@ -57,29 +56,33 @@ def prompt_popquiz_explain(lesson_text: str, json_obj_number: int, evaluation_co
 
 
 def prompt_finaltest(topic_name: str, lesson_text: str, difficulty: str):
-
     difficulty_instructions = {
         "easy": "Focus on basic terminology and simple facts.",
         "medium": "Focus on understanding concepts and relationships.",
         "hard": "Focus on complex application, analysis, and edge cases."
     }
 
-    prompt = f"""You are an expert curriculum designer creating a multiple-choice final test for the topic: {topic_name}.
+    prompt = f"""You are an expert curriculum designer creating a single-answer final test for the topic: {topic_name}.
 
     Level: {difficulty.upper()}
     Context: {difficulty_instructions.get(difficulty, "")}
 
     CRITICAL REQUIREMENTS:
-    1. Generate exactly 10 questions based on the provided Lesson Text. Some can have one correct answer, and some can have multiple correct answers.
-    2. Output ONLY valid JSON. No conversational text and no markdown formatting blocks.
-    3. The JSON must be an array of exactly 10 objects.
-    4. Each object must have four fields:
-    - "id" (integer 1-10)
+    1. Generate exactly 10 single-answer questions based on the provided Lesson Text. Each question MUST have exactly ONE correct answer. Do NOT generate questions with multiple correct answers.
+    2. Each question must have exactly 4 options: 1 correct + 3 plausible distractors.
+    3. Output ONLY valid JSON. No conversational text and no markdown formatting blocks (no ```json fences).
+    4. The JSON must be an array of exactly 10 objects.
+    5. Each object must have four fields:
+    - "id" (integer 1-10, sequential)
     - "question" (string)
-    - "options" (array of strings)
-    - "num_correct" (integer representing how many correct answers there are)
-    5. The correct answer(s) MUST ALWAYS be placed at the very beginning of the "options" array (from index 0 up to `num_correct` - 1). 
-    6. All incorrect answers must follow the correct answers in the "options" array.
+    - "options" (array of exactly 4 strings)
+    - "num_correct" (the position of the correct answer)
+    6. The correct answer MUST ALWAYS be placed at index 0 of the "options" array.
+    7. The 3 incorrect answers (distractors) must follow at indices 1, 2, 3.
+    8. Distractors must be plausible and related to the lesson content. Avoid obvious throwaway options.
+    9. Each question MUST test a DIFFERENT concept or fact from the lesson. Do NOT rephrase the same question with different wording.
+    10. Distractors MUST be factually incorrect ACCORDING TO THE LESSON TEXT. Never use as a distractor anything the lesson explicitly states as true. If the lesson mentions multiple items in a list (e.g., "X, Y, and Z"), do NOT use any of X, Y, or Z as a distractor.
+    11. If the Lesson Text is too short to generate 10 distinct, high-quality questions, prioritize quality over quantity — but still output exactly 10 questions, focusing on the most important facts.
 
     Lesson Text:
     {lesson_text}
@@ -89,7 +92,6 @@ def prompt_finaltest(topic_name: str, lesson_text: str, difficulty: str):
 
 
 def prompt_finaltest_explain(lesson_text: str, evaluation_context: str):
-
     prompt = f"""You are an expert, empathetic educational tutor grading a 10-question multiple-choice test. 
     Review the original lesson text and the evaluation context showing the user's selections versus the correct answers.
 
@@ -113,7 +115,6 @@ def prompt_finaltest_explain(lesson_text: str, evaluation_context: str):
 
 
 def prompt_explanation_paragraphs(topic_name: str, confusing_paragraph: str, education_level: str):
-
     prompt = f"""You are an empathetic, concise, and highly effective AI Tutor. 
     The student is learning about "{topic_name}" at a {education_level} level.
     They are struggling to understand the following paragraph from their course material:
@@ -137,7 +138,6 @@ def prompt_explanation_paragraphs(topic_name: str, confusing_paragraph: str, edu
 
 
 def prompt_reformat_professor(topic_name: str, ambiguous_text: str):
-
     prompt = f"""You are an expert University Professor specializing in "{topic_name}".
     You are reviewing a text that is ambiguous, poorly phrased, and contains grammatical errors.
 

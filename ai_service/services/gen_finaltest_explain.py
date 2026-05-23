@@ -43,8 +43,12 @@ def grade_and_explain_mcq_test(
     evaluation_context = ""
     for i, (q_item, user_ans) in enumerate(zip(test_data, user_answers)):
         question = q_item.get("question", "Unknown Question")
-        num_correct = q_item.get("num_correct", 1)
-        correct_answers = q_item.get("options", [])[:num_correct]
+        options = q_item.get("options", [])
+        correct_index = q_item.get("num_correct", 0)
+        if isinstance(correct_index, int) and 0 <= correct_index < len(options):
+            correct_answers = [options[correct_index]]
+        else:
+            correct_answers = []
 
         evaluation_context += f"--- Question {i + 1} ---\n"
         evaluation_context += f"Question: {question}\n"
