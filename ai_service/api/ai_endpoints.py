@@ -305,7 +305,9 @@ def final_test_explanation(payload: FinalTestExplanationRequest):
             status_code = 400
         raise HTTPException(status_code=status_code, detail=message)
 
-    return parsed
+    # Backend Java așteaptă FinalTestExplanationResponse cu un singur câmp "content"
+    # care e stringified JSON al array-ului de explicații
+    return {"content": json.dumps(parsed, ensure_ascii=False)}
 
 
 @router.post("/api/v1/blocks/explain")
