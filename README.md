@@ -199,4 +199,4 @@ API keys (nu se urcă pe GitHub)
 
 - Pentru Docker Compose: pune `GEMINI_API_KEY` (sau `GOOGLE_API_KEY`) în `ai_service/.env`.
 
-edit for verify auto-deploy
+--edit for verify auto-deploy---
